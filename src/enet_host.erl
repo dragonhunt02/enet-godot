@@ -11,6 +11,7 @@
     socket_options/0,
     give_socket/2,
     connect/4,
+    connect/5,
     send_outgoing_commands/4,
     send_outgoing_commands/5,
     get_port/1,
@@ -52,8 +53,11 @@ give_socket(Host, Socket) ->
     ok = gen_udp:controlling_process(Socket, Host),
     gen_server:cast(Host, {give_socket, Socket}).
 
-connect(Host, IP, Port, ChannelCount) ->
-    gen_server:call(Host, {connect, IP, Port, ChannelCount}).
+%%connect(Host, IP, Port, ChannelCount) ->
+%%    gen_server:call(Host, {connect, IP, Port, ChannelCount, <<0>>}).
+
+connect(Host, IP, Port, ChannelCount, Data) ->
+    gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
 
 send_outgoing_commands(Host, Commands, IP, Port) ->
     send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
@@ -134,7 +138,7 @@ init({AssignedPort, ConnectFun, Options}) ->
                         socket = Socket}}
     end.
 
-handle_call({connect, IP, Port, Channels}, _From, S) ->
+handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
     %%
     %% Connect to a remote peer.
     %%
@@ -157,7 +161,8 @@ handle_call({connect, IP, Port, Channels}, _From, S) ->
                     name = Ref,
                     host = self(),
                     channels = Channels,
-                    connect_fun = ConnectFun
+                    connect_fun = ConnectFun,
+                    connect_packet_data = Data
                 },
                 start_peer(Peer)
         catch
