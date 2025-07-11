@@ -3,7 +3,7 @@
 -export([
     start_host/3,
     stop_host/1,
-    connect_peer/4,
+    connect_peer/5,
     await_connect/0,
     disconnect_peer/1,
     disconnect_peer_now/1,
@@ -52,13 +52,14 @@ stop_host(HostPort) ->
     HostPort :: port_number(),
     IP :: string(),
     RemotePort :: port_number(),
-    ChannelCount :: pos_integer()
+    ChannelCount :: pos_integer(),
+    Data :: iodata()
 ) ->
     {ok, pid()} | {error, atom()}.
 
-connect_peer(HostPort, IP, RemotePort, ChannelCount) ->
+connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
     Host = gproc:where({n, l, {enet_host, HostPort}}),
-    enet_host:connect(Host, IP, RemotePort, ChannelCount).
+    enet_host:connect(Host, IP, RemotePort, ChannelCount, Data).
 
 await_connect() ->
     receive
