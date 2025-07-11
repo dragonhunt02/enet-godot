@@ -10,7 +10,7 @@
     start_link/3,
     socket_options/0,
     give_socket/2,
-    connect/4,
+%%    connect/4,
     connect/5,
     send_outgoing_commands/4,
     send_outgoing_commands/5,
