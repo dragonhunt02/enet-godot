@@ -172,7 +172,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = local}]) ->
         name = Ref,
         host = Host,
         channels = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = P,
     enet_pool:connect_peer(LocalPort, Ref),
     gproc:reg({n, l, {enet_peer, Ref}}),
@@ -185,7 +186,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = local}]) ->
         port = Port,
         peer_id = PeerID,
         channel_count = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     },
     {ok, connecting, S};
 init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
@@ -201,7 +203,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
         port = Port,
         name = Ref,
         host = Host,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = P,
     enet_pool:connect_peer(LocalPort, Ref),
     gproc:reg({n, l, {enet_peer, Ref}}),
@@ -213,7 +216,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
         ip = IP,
         port = Port,
         peer_id = PeerID,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     },
     {ok, acknowledging_connect, S}.
 
@@ -240,7 +244,7 @@ connecting(enter, _OldState, S) ->
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
         outgoing_reliable_sequence_number = SequenceNr,
-        packet_data = PacketData
+        connect_packet_data = PacketData
     } = S,
     IncomingBandwidth = enet_host:get_incoming_bandwidth(Host),
     OutgoingBandwidth = enet_host:get_outgoing_bandwidth(Host),
