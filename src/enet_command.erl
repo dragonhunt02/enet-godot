@@ -43,7 +43,8 @@ connect(
     PacketThrottleAcceleration,
     PacketThrottleDeceleration,
     ConnectID,
-    OutgoingReliableSequenceNumber
+    OutgoingReliableSequenceNumber,
+    PacketData
 ) ->
     WindowSize = calculate_initial_window_size(OutgoingBandwidth),
     {
@@ -66,7 +67,7 @@ connect(
             packet_throttle_deceleration = PacketThrottleDeceleration,
             connect_id = ConnectID,
             %% What is this used for?
-            data = 0
+            data = PacketData
         }
     }.
 
