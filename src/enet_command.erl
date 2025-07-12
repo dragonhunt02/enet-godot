@@ -5,7 +5,7 @@
 
 -export([
     acknowledge/2,
-    connect/12,
+    connect/13,
     verify_connect/8,
     sequenced_disconnect/0,
     unsequenced_disconnect/0,
