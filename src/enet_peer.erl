@@ -63,7 +63,8 @@
     channel_count,
     channels,
     worker,
-    connect_fun
+    connect_fun,
+    connect_packet_data
 }).
 
 %%==============================================================
@@ -172,7 +173,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = local}]) ->
         name = Ref,
         host = Host,
         channels = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = P,
     enet_pool:connect_peer(LocalPort, Ref),
     gproc:reg({n, l, {enet_peer, Ref}}),
@@ -185,7 +187,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = local}]) ->
         port = Port,
         peer_id = PeerID,
         channel_count = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     },
     {ok, connecting, S};
 init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
@@ -201,7 +204,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
         port = Port,
         name = Ref,
         host = Host,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = P,
     enet_pool:connect_peer(LocalPort, Ref),
     gproc:reg({n, l, {enet_peer, Ref}}),
@@ -213,7 +217,8 @@ init([LocalPort, P = #enet_peer{handshake_flow = remote}]) ->
         ip = IP,
         port = Port,
         peer_id = PeerID,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     },
     {ok, acknowledging_connect, S}.
 
@@ -239,7 +244,8 @@ connecting(enter, _OldState, S) ->
         packet_throttle_interval = PacketThrottleInterval,
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
-        outgoing_reliable_sequence_number = SequenceNr
+        outgoing_reliable_sequence_number = SequenceNr,
+        connect_packet_data = PacketData
     } = S,
     IncomingBandwidth = enet_host:get_incoming_bandwidth(Host),
     OutgoingBandwidth = enet_host:get_outgoing_bandwidth(Host),
@@ -259,7 +265,8 @@ connecting(enter, _OldState, S) ->
             PacketThrottleAcceleration,
             PacketThrottleDeceleration,
             ConnectID,
-            SequenceNr
+            SequenceNr,
+            PacketData
         ),
     HBin = enet_protocol_encode:command_header(ConnectH),
     CBin = enet_protocol_encode:command(ConnectC),
@@ -323,7 +330,7 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
         connect_id = ConnectID,
-        data = _Data
+        data = PacketData
     } = C,
     #state{
         host = Host,
@@ -332,7 +339,8 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         peer_id = PeerID,
         incoming_session_id = IncomingSessionID,
         outgoing_session_id = OutgoingSessionID,
-        outgoing_reliable_sequence_number = SequenceNr
+        outgoing_reliable_sequence_number = SequenceNr,
+        connect_packet_data = PacketData
     } = S,
     gproc:reg({p, l, mtu}, MTU),
     HostChannelLimit = enet_host:get_channel_limit(Host),
@@ -369,7 +377,8 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
         outgoing_reliable_sequence_number = SequenceNr + 1,
-        channel_count = ChannelCount
+        channel_count = ChannelCount,
+        connect_packet_data = PacketData
     },
     {next_state, verifying_connect, NewS, [VerifyConnectTimeout]};
 acknowledging_connect({timeout, {_ChannelID, _SentTime, _SequenceNr}}, _, S) ->
@@ -477,7 +486,8 @@ connected(enter, _OldState, S) ->
         remote_peer_id = RemotePeerID,
         connect_id = ConnectID,
         channel_count = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = S,
     true = gproc:mreg(p, l, [
         {connect_id, ConnectID},
@@ -491,7 +501,8 @@ connected(enter, _OldState, S) ->
         port => Port,
         peer => self(),
         channels => Channels,
-        connect_id => ConnectID
+        connect_id => ConnectID,
+        connect_packet_data => PacketData
     },
     case start_worker(ConnectFun, PeerInfo) of
         {error, Reason} ->
