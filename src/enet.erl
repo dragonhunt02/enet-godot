@@ -3,6 +3,7 @@
 -export([
     start_host/3,
     stop_host/1,
+    connect_peer/4,
     connect_peer/5,
     await_connect/0,
     disconnect_peer/1,
@@ -60,6 +61,16 @@ stop_host(HostPort) ->
 connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
     Host = gproc:where({n, l, {enet_host, HostPort}}),
     enet_host:connect(Host, IP, RemotePort, ChannelCount, Data).
+
+-spec connect_peer(
+          HostPort     :: port_number(),
+          IP           :: string(),
+          RemotePort   :: port_number(),
+          ChannelCount :: pos_integer()
+      ) -> {ok, pid()} | {error, atom()}.
+connect_peer(HostPort, IP, RemotePort, ChannelCount) ->
+    %% use 0x0 as a one-byte binary
+    connect_peer(HostPort, IP, RemotePort, ChannelCount, <<0>>).
 
 await_connect() ->
     receive
