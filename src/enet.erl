@@ -54,7 +54,7 @@ stop_host(HostPort) ->
     IP :: string(),
     RemotePort :: port_number(),
     ChannelCount :: pos_integer(),
-    Data :: iodata()
+    Data :: pos_integer()
 ) ->
     {ok, pid()} | {error, atom()}.
 
@@ -70,7 +70,7 @@ connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
       ) -> {ok, pid()} | {error, atom()}.
 connect_peer(HostPort, IP, RemotePort, ChannelCount) ->
     %% use 0x0 as a one-byte binary
-    connect_peer(HostPort, IP, RemotePort, ChannelCount, <<0>>).
+    connect_peer(HostPort, IP, RemotePort, ChannelCount, 0).
 
 await_connect() ->
     receive
