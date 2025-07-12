@@ -69,8 +69,8 @@ connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
           ChannelCount :: pos_integer()
       ) -> {ok, pid()} | {error, atom()}.
 connect_peer(HostPort, IP, RemotePort, ChannelCount) ->
-    %% use 0x0 as a one-byte binary
-    connect_peer(HostPort, IP, RemotePort, ChannelCount, 0).
+    %% use 8 as godot peer id for testing, it should be a random uint32 (excluding 0 and 1)
+    connect_peer(HostPort, IP, RemotePort, ChannelCount, 8).
 
 await_connect() ->
     receive
