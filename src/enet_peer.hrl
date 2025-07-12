@@ -8,5 +8,5 @@
          host,
          channels,
          connect_fun,
-         connect_packet_data,
+         connect_packet_data
         }).
