@@ -63,7 +63,8 @@
     channel_count,
     channels,
     worker,
-    connect_fun
+    connect_fun,
+    connect_packet_data
 }).
 
 %%==============================================================
