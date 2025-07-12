@@ -329,7 +329,7 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
         connect_id = ConnectID,
-        data = _Data
+        data = PacketData
     } = C,
     #state{
         host = Host,
@@ -338,7 +338,8 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         peer_id = PeerID,
         incoming_session_id = IncomingSessionID,
         outgoing_session_id = OutgoingSessionID,
-        outgoing_reliable_sequence_number = SequenceNr
+        outgoing_reliable_sequence_number = SequenceNr,
+        connect_packet_data = PacketData
     } = S,
     gproc:reg({p, l, mtu}, MTU),
     HostChannelLimit = enet_host:get_channel_limit(Host),
@@ -375,7 +376,8 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         packet_throttle_acceleration = PacketThrottleAcceleration,
         packet_throttle_deceleration = PacketThrottleDeceleration,
         outgoing_reliable_sequence_number = SequenceNr + 1,
-        channel_count = ChannelCount
+        channel_count = ChannelCount,
+        connect_packet_data = PacketData
     },
     {next_state, verifying_connect, NewS, [VerifyConnectTimeout]};
 acknowledging_connect({timeout, {_ChannelID, _SentTime, _SequenceNr}}, _, S) ->
@@ -483,7 +485,8 @@ connected(enter, _OldState, S) ->
         remote_peer_id = RemotePeerID,
         connect_id = ConnectID,
         channel_count = N,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        connect_packet_data = PacketData
     } = S,
     true = gproc:mreg(p, l, [
         {connect_id, ConnectID},
@@ -497,7 +500,8 @@ connected(enter, _OldState, S) ->
         port => Port,
         peer => self(),
         channels => Channels,
-        connect_id => ConnectID
+        connect_id => ConnectID,
+        connect_packet_data => PacketData
     },
     case start_worker(ConnectFun, PeerInfo) of
         {error, Reason} ->
