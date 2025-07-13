@@ -435,15 +435,17 @@ acknowledging_verify_connect(
     %%
     #state{channel_count = LocalChannelCount} = S,
     LocalMTU = get_mtu(self()),
+    %% Complete negotiation of minimums
+    WindowSizeMin = min(S#state.window_size, C#verify_connect.window_size),
+    %% 0 is unlimited bandwidth, so we clamp server to at least 1
+    IncomingBandwidthMin = min(S#state.incoming_bandwidth, max(1, C#verify_connect.outgoing_bandwidth)),
+    OutgoingBandwidthMin = min(S#state.outgoing_bandwidth, C#verify_connect.incoming_bandwidth),
     case S of
         #state{
             %% ---
             %% Fields below are matched against the values received in
             %% the Verify Connect command.
             %% ---
-            window_size = WindowSize,
-            incoming_bandwidth = IncomingBandwidth,
-            outgoing_bandwidth = OutgoingBandwidth,
             packet_throttle_interval = ThrottleInterval,
             packet_throttle_acceleration = ThrottleAcceleration,
             packet_throttle_deceleration = ThrottleDeceleration,
@@ -453,7 +455,7 @@ acknowledging_verify_connect(
             LocalChannelCount =:= RemoteChannelCount,
             LocalMTU =:= RemoteMTU
         ->
-            NewS = S#state{remote_peer_id = RemotePeerID},
+            NewS = S#state{remote_peer_id = RemotePeerID, window_size = WindowSizeMin, incoming_bandwidth = IncomingBandwidthMin, outgoing_bandwidth = OutgoingBandwidthMin},
             {next_state, connected, NewS};
         _Mismatch ->
             {stop, connect_verification_failed, S}
