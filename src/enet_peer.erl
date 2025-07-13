@@ -297,6 +297,17 @@ connecting(cast, {incoming_command, {H, C = #acknowledge{}}}, S) ->
     } = C,
     CanceledTimeout = cancel_resend_timer(ChannelID, SentTime, SequenceNumber),
     {next_state, acknowledging_verify_connect, S, [CanceledTimeout]};
+connecting(cast, {incoming_command, {H, %% =#command_header{channel_id = Ch},
+                                     C=#verify_connect{}}}, S) ->
+    %% cancel the CONNECT retry
+    %%cancel_resend_timer(Ch,
+    %%                    C#verify_connect.received_sent_time,
+    %%                    H#command_header.reliable_sequence_number),
+
+    %% now jump into acknowledging_verify_connect *and* immediately
+    %% re‐fire the same verify_connect event there:
+    {next_state, acknowledging_verify_connect, S,
+     [{next_event, cast, {incoming_command, {H, C}}}]};
 connecting({timeout, {_ChannelID, _SentTime, _SequenceNumber}}, _, S) ->
     logger:debug("connection timeout"),
     {stop, timeout, S};
