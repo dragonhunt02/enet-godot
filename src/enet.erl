@@ -69,8 +69,8 @@ connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
           ChannelCount :: pos_integer()
       ) -> {ok, pid()} | {error, atom()}.
 connect_peer(HostPort, IP, RemotePort, ChannelCount) ->
-    %% use 0x0 as a one-byte binary
-    connect_peer(HostPort, IP, RemotePort, ChannelCount, 0).
+    %% use random generated godot peer id as Data
+    connect_peer(HostPort, IP, RemotePort, ChannelCount, rand_uint32_godot_peer()).
 
 await_connect() ->
     receive
@@ -143,3 +143,14 @@ broadcast(HostPort, ChannelID, Data, SendFun) ->
         end,
         Peers
     ).
+
+-spec rand_uint32_godot_peer() -> 2..16#FFFFFFFF.
+rand_uint32_godot_peer() ->
+    %% Exclude 0 and 1, reserved for godot servers
+    %% rand:uniform/1 will return 1 <=..<= FFFFFFFF-1
+    Max = 16#FFFFFFFF - 1,
+    N = rand:uniform(Max) + 1,  %% shift by +1, now in 2..0xFFFFFFFF
+    %% Godot requires it compatible with unsigned, since negative ID is used for exclusion
+    %% See MultiplayerPeer::generate_unique_id()
+    %% https://github.com/godotengine/godot/blob/4f4031a675700aa0dff636285bc6cc599cf50184/scene/main/multiplayer_peer.cpp#L35
+    N band 16#7FFFFFFF. 
