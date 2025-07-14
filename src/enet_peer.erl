@@ -783,9 +783,15 @@ connected({timeout, recv}, ping, S) ->
     %%
     %% The receive-timer was triggered.
     %%
+    %% - Notify worker application
     %% - Stop
     %%
     logger:debug("ping timeout"),
+        #state{
+        worker = Worker,
+        connect_id = ConnectID
+    } = S,
+    Worker ! {enet, ping_timeout, remote, self(), ConnectID},
     {stop, normal, S};
 connected({timeout, send}, ping, S) ->
     %%
