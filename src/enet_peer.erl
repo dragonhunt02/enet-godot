@@ -64,7 +64,8 @@
     channels,
     worker,
     connect_fun,
-    connect_packet_data
+    connect_packet_data,
+    connect_timer_id
 }).
 
 %%==============================================================
@@ -278,9 +279,11 @@ connecting(enter, _OldState, S) ->
         make_resend_timer(
             ChannelID, SentTime, SequenceNr, ?PEER_TIMEOUT_MINIMUM, Data
         ),
+    ConnectTimerId = {ChannelID, SentTime, SequenceNr},
     NewS = S#state{
         outgoing_reliable_sequence_number = SequenceNr + 1,
-        connect_id = ConnectID
+        connect_id = ConnectID,
+        connect_timer_id = ConnectTimerId
     },
     {keep_state, NewS, [ConnectTimeout]};
 connecting(cast, {incoming_command, {H, C = #acknowledge{}}}, S) ->
@@ -297,17 +300,18 @@ connecting(cast, {incoming_command, {H, C = #acknowledge{}}}, S) ->
     } = C,
     CanceledTimeout = cancel_resend_timer(ChannelID, SentTime, SequenceNumber),
     {next_state, acknowledging_verify_connect, S, [CanceledTimeout]};
-connecting(cast, {incoming_command, {H, %% =#command_header{channel_id = Ch},
-                                     C=#verify_connect{}}}, S) ->
+connecting(cast, {incoming_command, {H, C=#verify_connect{}}}, S) ->
     %% cancel the CONNECT retry
-    %%cancel_resend_timer(Ch,
-    %%                    C#verify_connect.received_sent_time,
-    %%                    H#command_header.reliable_sequence_number),
-
-    %% now jump into acknowledging_verify_connect *and* immediately
-    %% re‐fire the same verify_connect event there:
-    {next_state, acknowledging_verify_connect, S,
-     [{next_event, cast, {incoming_command, {H, C}}}]};
+    #state {
+            connect_timer_id = ConnectTimerId
+    } = S,
+    {ChannelID, SentTime, SequenceNr} = ConnectTimerId,
+    CanceledTimeout = cancel_resend_timer(ChannelID, SentTime, SequenceNumber),
+    NewS = S#state{connect_timer_id = undefined}, 
+    %% now jump into acknowledging_verify_connect *and* immediately
+    %% re‐fire the same verify_connect event there:
+    {next_state, acknowledging_verify_connect, NewS,
+     [{next_event, cast, {incoming_command, {H, C}}}, CanceledTimeout]};
 connecting({timeout, {_ChannelID, _SentTime, _SequenceNumber}}, _, S) ->
     logger:debug("connection timeout"),
     {stop, timeout, S};
