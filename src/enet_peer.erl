@@ -442,7 +442,7 @@ acknowledging_verify_connect(
     %% TODO: Review handling of bandwidth and window size compared to reference implementation.
     RecvBandwidthLimits = #bandwidth_limit{
         incoming_bandwidth = C#verify_connect.incoming_bandwidth,
-        outgoing_bandwidth = C#verify_connect.outgoing_bandwidth,
+        outgoing_bandwidth = C#verify_connect.outgoing_bandwidth
     },
     case S of
         #state{
