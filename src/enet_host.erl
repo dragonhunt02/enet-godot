@@ -34,7 +34,8 @@
 -record(state, {
     socket,
     compressor,
-    connect_fun
+    connect_fun,
+    dtls = false
 }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
@@ -96,6 +97,7 @@ get_channel_limit(Host) ->
 
 init({AssignedPort, ConnectFun, Options}) ->
     true = gproc:reg({n, l, {enet_host, AssignedPort}}),
+    DTLSEnabled = dtls_enabled(Options),
     ChannelLimit =
         case lists:keyfind(channel_limit, 1, Options) of
             {channel_limit, CLimit} -> CLimit;
@@ -127,23 +129,25 @@ init({AssignedPort, ConnectFun, Options}) ->
             {mtu, ?HOST_DEFAULT_MTU}
         ]
     ),
-    case gen_udp:open(AssignedPort, socket_options()) of
+    case try_open_socket(AssignedPort, DTLSEnabled) of
         {error, eaddrinuse} ->
             %%
             %% A socket has already been opened on this port
             %% - The socket will be given to us later
             %%
-            {ok, #state{connect_fun = ConnectFun, compressor = Compressor}};
-        {ok, Socket} ->
+            {ok, #state{connect_fun = ConnectFun, compressor = Compressor, dtls = DTLSEnabled}};
+        {ok, Socket, ListenSockOpt} ->
             %%
             %% We were able to open a new socket on this port
             %% - It means we have been restarted by the supervisor
             %% - Set it to active mode
             %%
-            ok = inet:setopts(Socket, [{active, true}]),
+            ok = activate_socket(Socket, DTLSEnabled),
             {ok, #state{connect_fun = ConnectFun, 
                         compressor = Compressor,
-                        socket = Socket}}
+                        socket = Socket,
+                        dtls = DTLSEnabled}};
+                        %%listen_socket_opts = ListenSockOpt}};
     end.
 
 handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
@@ -330,3 +334,27 @@ compress(_Data, Mode) ->
 
 unsupported_compress_mode(Mode) -> 
     logger:error("Unsupported compression mode: ~p", [Mode]).
+
+dtls_enabled(Options) ->
+    case lists:keyfind(dtls, 1, Options) of
+        {dtls, true} -> true;
+        _ -> false
+    end.
+
+try_open_socket(Port, true) -> %% DTLS
+    Opts = socket_dtls_options() ++ [{type, datagram}],
+    case ssl:listen(Port, Opts) of
+        {ok, SslListen} ->
+            {ok, SslListen, Opts};
+        Other -> Other
+    end;
+try_open_socket(Port, false) -> %% UDP
+    Opts = socket_options(),
+    case gen_udp:open(Port, Opts) of
+        {ok, Sock} -> {ok, Sock, Opts};
+        Other -> Other
+    end.
+
+activate_socket(Socket, true)  -> ssl:setopts(Socket, [{active, true}]);
+activate_socket(Socket, false) -> inet:setopts(Socket, [{active, true}]).
+
