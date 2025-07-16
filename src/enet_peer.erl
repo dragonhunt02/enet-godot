@@ -302,11 +302,11 @@ connecting(cast, {incoming_command, {H, C = #acknowledge{}}}, S) ->
     {next_state, acknowledging_verify_connect, S, [CanceledTimeout]};
 connecting(cast, {incoming_command, {H, C=#verify_connect{}}}, S) ->
     %% cancel the CONNECT retry
-    #state {
-            connect_timer_id = ConnectTimerId
+    #state{
+            connect_timer_id = ConnectTimerID
     } = S,
-    {ChannelID, SentTime, SequenceNr} = ConnectTimerId,
-    CanceledTimeout = cancel_resend_timer(ChannelID, SentTime, SequenceNumber),
+    {ChannelID, SentTime, SequenceNr} = ConnectTimerID,
+    CanceledTimeout = cancel_resend_timer(ChannelID, SentTime, SequenceNr),
     NewS = S#state{connect_timer_id = undefined}, 
     %% now jump into acknowledging_verify_connect *and* immediately
     %% re‐fire the same verify_connect event there:
