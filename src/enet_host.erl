@@ -238,7 +238,7 @@ handle_cast(_Msg, State) ->
 %%% handle_info
 %%%
 handle_info({udp, Socket, IP, Port, Packet}, S) -> 
-    demux_udp(Socket, IP, Port, Packet, S);
+    demux_udp(Socket, IP, Port, Packet, S).
 
 %% DTLS
 handle_info({ssl, Socket, Packet}, S) -> 
