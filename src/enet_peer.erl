@@ -354,8 +354,7 @@ acknowledging_connect(cast, {incoming_command, {_H, C = #connect{}}}, S) ->
         peer_id = PeerID,
         incoming_session_id = IncomingSessionID,
         outgoing_session_id = OutgoingSessionID,
-        outgoing_reliable_sequence_number = SequenceNr,
-        connect_packet_data = PacketData
+        outgoing_reliable_sequence_number = SequenceNr
     } = S,
     gproc:reg({p, l, mtu}, MTU),
     HostChannelLimit = enet_host:get_channel_limit(Host),
