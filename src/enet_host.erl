@@ -9,6 +9,7 @@
 -export([
     start_link/3,
     socket_options/0,
+    socket_dtls_options/0,
     give_socket/2,
     connect/5,
     send_outgoing_commands/4,
@@ -47,6 +48,17 @@ start_link(Port, ConnectFun, Options) ->
 
 socket_options() ->
     [binary, {active, false}, {reuseaddr, false}, {broadcast, true}].
+
+socket_options() ->
+    DefaultOptions = [binary, {active, false}, {reuseaddr, false}, {broadcast, true}]
+    DefaultDTLSOptions = [{certfile, "priv/ssl/server.crt"},
+      {keyfile,  "priv/ssl/server.key"},
+      {cacertfile, "priv/ssl/ca.crt"},
+      {verify,   verify_peer},
+      {versions, ['dtlsv1.2']},
+      {protocol, dtls}
+    ],
+    DefaultOptions ++ DefaultDTLSOptions.
 
 give_socket(Host, Socket) ->
     ok = gen_udp:controlling_process(Socket, Host),
