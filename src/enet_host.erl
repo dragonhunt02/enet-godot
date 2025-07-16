@@ -61,9 +61,13 @@ socket_dtls_options() ->
     ],
     DefaultOptions ++ DefaultDTLSOptions.
 
-give_socket(Host, Socket) ->
+give_socket(ssl, Host, Socket) ->
+    ok = ssl:controlling_process(Socket, Host),
+    gen_server:cast(Host, {give_socket, ssl, Socket}).
+
+give_socket(udp, Host, Socket) ->
     ok = gen_udp:controlling_process(Socket, Host),
-    gen_server:cast(Host, {give_socket, Socket}).
+    gen_server:cast(Host, {give_socket, udp, Socket}).
 
 connect(Host, IP, Port, ChannelCount, Data) ->
     gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
@@ -208,16 +212,25 @@ handle_call({send_outgoing_commands, C, IP, Port, ID}, _From, S) ->
         sent_time = SentTime
     },
     Packet = [enet_protocol_encode:protocol_header(PH), Commands],
-    ok = gen_udp:send(S#state.socket, IP, Port, Packet),
+    case S#state.dtls of
+        true ->
+            %% DTLS send
+            ok = ssl:send(S#state.socket, Packet);
+        false ->
+            %% UDP send
+            ok = gen_udp:send(S#state.socket, IP, Port, Packet),
     {reply, {sent_time, SentTime}, S}.
 
 %%%
 %%% handle_cast
 %%%
 
-handle_cast({give_socket, Socket}, S) ->
+handle_cast({give_socket, ssl, Socket}, S) -> %% S = #state{dtls = true}
+    ok = ssl:setopts(Socket, [{active, true}]),
+    {noreply, S#state{socket = Socket, dtls = true}};
+handle_cast({give_socket, udp, Socket}, S) ->
     ok = inet:setopts(Socket, [{active, true}]),
-    {noreply, S#state{socket = Socket}};
+    {noreply, S#state{socket = Socket, dtls = false}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
