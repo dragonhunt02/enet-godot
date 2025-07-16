@@ -10,7 +10,6 @@
     start_link/3,
     socket_options/0,
     give_socket/2,
-%%    connect/4,
     connect/5,
     send_outgoing_commands/4,
     send_outgoing_commands/5,
@@ -52,9 +51,6 @@ socket_options() ->
 give_socket(Host, Socket) ->
     ok = gen_udp:controlling_process(Socket, Host),
     gen_server:cast(Host, {give_socket, Socket}).
-
-%%connect(Host, IP, Port, ChannelCount) ->
-%%    gen_server:call(Host, {connect, IP, Port, ChannelCount, <<0>>}).
 
 connect(Host, IP, Port, ChannelCount, Data) ->
     gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
