@@ -49,7 +49,7 @@ start_link(Port, ConnectFun, Options) ->
 socket_options() ->
     [binary, {active, false}, {reuseaddr, false}, {broadcast, true}].
 
-socket_options() ->
+socket_dtls_options() ->
     DefaultOptions = [binary, {active, false}, {reuseaddr, false}, {broadcast, true}]
     DefaultDTLSOptions = [{certfile, "priv/ssl/server.crt"},
       {keyfile,  "priv/ssl/server.key"},
