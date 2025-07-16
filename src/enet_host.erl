@@ -319,7 +319,13 @@ handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
 %%%
 %%% terminate
 %%%
+terminate(_Reason, S = #state{socket = Ssl, dtls = true}) ->
+    ssl:close(Ssl);
+terminate(_Reason, S = #state{socket = Udp}) ->
+    gen_udp:close(Udp).
 
+terminate(_Reason, S = #state{dtls = true}) ->
+    ok = ssl:close(S#state.socket).
 terminate(_Reason, S) ->
     ok = gen_udp:close(S#state.socket).
 
