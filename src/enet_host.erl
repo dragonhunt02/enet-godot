@@ -237,10 +237,19 @@ handle_cast(_Msg, State) ->
 %%%
 %%% handle_info
 %%%
+handle_info({udp, Socket, IP, Port, Packet}, S) -> 
+    demux_udp(Socket, IP, Port, Packet, S);
 
-handle_info({udp, Socket, IP, Port, Packet}, S) ->
+%% DTLS
+handle_info({ssl, Socket, Packet}, S) -> 
+    %% already decrypted by ssl layer
+    {ok, {PeerIP, PeerPort}} = ssl:peername(Socket),
+    demux_udp(Socket, PeerIP, PeerPort, Packet, S).
+
+%% common demux logic (extract ENet header & dispatch)
+demux_udp(Socket, IP, Port, Packet, S) ->
     %%
-    %% Received a UDP packet.
+    %% Received a UDP/DTLS packet.
     %%
     %% - Unpack the ENet protocol header
     %% - Decompress the remaining packet if necessary
