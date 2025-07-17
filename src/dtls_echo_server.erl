@@ -57,6 +57,14 @@ handle_info({'EXIT', _From, _Reason}, State) ->
 handle_info(_, State) ->
     {noreply, State}.
 
+handle_cast(_Msg, State) ->
+    %% No action taken; just continue
+    {noreply, State}.
+
+handle_call(_Request, _From, State) ->
+    %% Respond with a default reply
+    {reply, ok, State}.
+
 terminate(_Reason, #state{transport=T, socket=S}) ->
     T:fast_close(S),
     ok.
