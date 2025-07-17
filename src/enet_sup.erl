@@ -31,6 +31,17 @@ start_host_supervisor(Port, ConnectFun, Options) ->
     },
     supervisor:start_child(?MODULE, Child).
 
+start_dtls_host_supervisor(Port, ConnectFun, Options) ->
+    Child = #{
+        id => Port,
+        start => {enet_dtls_host_sup, start_link, [Port, ConnectFun, Options]},
+        restart => temporary,
+        shutdown => infinity,
+        type => supervisor,
+        modules => [enet_dtls_host_sup]
+    },
+    supervisor:start_child(?MODULE, Child).
+
 stop_host_supervisor(HostSup) ->
     supervisor:terminate_child(?MODULE, HostSup).
 
