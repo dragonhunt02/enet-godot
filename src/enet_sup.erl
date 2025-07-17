@@ -5,6 +5,7 @@
 -export([
     start_link/0,
     start_host_supervisor/3,
+    start_host_dtls_supervisor/3,
     stop_host_supervisor/1
 ]).
 
