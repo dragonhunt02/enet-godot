@@ -22,7 +22,7 @@ init([Port, ConnectFun, Options]) ->
     ok = ssl:start(),
     SslOpts = Options ++
       [ {protocol,  dtlsv1_2},
-        {reuseaddr, true},
+        {reuseaddr, false},
         {active,    false},
         {verify,    verify_none}
       ],
