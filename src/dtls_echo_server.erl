@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([start_link/2]).
--export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
+-export([init/1, handle_continue/2, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
 
 -record(state, {
   transport,
@@ -17,16 +17,29 @@ start_link(Transport, RawSocket) ->
 
 init({Transport, RawSocket}) ->
     process_flag(trap_exit, true),
+    io:format("Init echo server socket ~p~n", [RawSocket]),
 
+    %% Store raw args and defer the actual wait() to handle_continue
+    State0 = #state{transport = Transport,
+                    socket    = RawSocket,
+                    peername  = undefined},
+    {ok, State0, {continue, handshake}}.
+
+
+handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
+        io:format("Echo server handshake socket ~p~n", [RawSocket]),
     %% Upgrade the raw socket to a DTLS session
     case Transport:wait(RawSocket) of
       {ok, Socket} ->
+        io:format("Echo server trandport ok socket ~p~n", [Socket]),
         {ok, Peer} = Transport:peername(Socket),
-        %% We keep active = once for controlled flow
-        {ok, #state{transport=Transport, socket=Socket, peername=Peer}};
+        State = State0#state{socket=Socket, peername=Peer},
+        {noreply, State};
       {error, Reason} ->
+        io:format("Echo server transport fail reason ~p~n", [Reason]),
         Transport:fast_close(RawSocket),
-        {stop, {wait_error, Reason}}
+        {stop, {handshake_failed, Reason}, State0}
+        %%{stop, {wait_error, Reason}}
     end.
 
 %%% Handle all DTLS/SSL messages
