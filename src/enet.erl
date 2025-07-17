@@ -57,7 +57,7 @@ start_host(Port, ConnectFun, Options) ->
 start_dtls_host(Port, ConnectFun, Options) ->
     %%{ok, Socket} = gen_udp:open(Port, enet_host:socket_options()),
     %%{ok, AssignedPort} = inet:port(Socket),
-    case enet_sup:start_host_dtls_supervisor(AssignedPort, ConnectFun, Options) of
+    case enet_sup:start_host_dtls_supervisor(Port, ConnectFun, Options) of
         {error, Reason} ->
             io:format("Startup dtls failure"),
             {error, Reason};
