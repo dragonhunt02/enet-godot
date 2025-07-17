@@ -10,7 +10,7 @@
 }).
 
 %%% API
-start_link(Port) ->
+start_link(Port, _ConnectFun, _Options) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, Port, []).
 
 %%% gen_server callbacks
