@@ -87,7 +87,7 @@ init([Port, ConnectFun, Options]) ->
       type      => worker,
       modules   => [enet_dtls_acceptor]
     },
-    {ok, {SupFlags, [Pool, Host, Disconnector, PeerSup, Acceptor]}}.
+    {ok, {SupFlags, [Pool, Acceptor, Host, Disconnector, PeerSup]}}.
 
 %%%===================================================================
 %%% Internal functions
