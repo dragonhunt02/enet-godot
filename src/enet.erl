@@ -2,6 +2,7 @@
 
 -export([
     start_host/3,
+    start_dtls_host/3,
     stop_host/1,
     connect_peer/4,
     connect_peer/5,
@@ -43,6 +44,30 @@ start_host(Port, ConnectFun, Options) ->
             enet_host:give_socket(Host, Socket),
             {ok, AssignedPort}
     end.
+
+-spec start_dtls_host(
+    Port :: port_number(),
+    ConnectFun ::
+        mfargs()
+        | fun((map()) -> {ok, pid()} | {error, term()}),
+    Options :: [{atom(), term()}, ...]
+) ->
+    {ok, port_number()} | {error, term()}.
+
+start_dtls_host(Port, ConnectFun, Options) ->
+    %%{ok, Socket} = gen_udp:open(Port, enet_host:socket_options()),
+    %%{ok, AssignedPort} = inet:port(Socket),
+    case enet_sup:start_host_dtls_supervisor(AssignedPort, ConnectFun, Options) of
+        {error, Reason} ->
+            io:format("Startup dtls failure"),
+            {error, Reason};
+        {ok, _HostSup} ->        
+            io:format("Startup dtls success"),
+            %%Host = gproc:where({n, l, {enet_host, AssignedPort}}),
+            %%%enet_host:give_socket(Host, Socket),
+            {ok, AssignedPort}
+    end.
+
 
 -spec stop_host(HostPort :: port_number()) -> ok.
 
