@@ -65,7 +65,7 @@ start_dtls_host(Port, ConnectFun, Options) ->
             io:format("Startup dtls success"),
             %%Host = gproc:where({n, l, {enet_host, AssignedPort}}),
             %%%enet_host:give_socket(Host, Socket),
-            {ok, AssignedPort}
+            {ok, Port}
     end.
 
 
