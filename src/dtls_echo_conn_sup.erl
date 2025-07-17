@@ -4,7 +4,7 @@
 
 -export([start_link/0, init/1, start_child/2]).
 
-start_link() ->
+start_link(_Port, _ConnectFun, _Options) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
