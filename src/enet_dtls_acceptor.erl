@@ -30,8 +30,9 @@ init([Port, ConnectFun, Options]) ->
     {ok, {{_Addr, AssignedPort}, _}} = inet:sockname(ListenSock),
 
     %% register for lookup & pub/sub
-    gproc:reg({n, l, {enet_host, AssignedPort}}),
-
+    gproc:reg({n, l, {enet_dtls_acceptor, AssignedPort}}),
+  
+    io:format("Start DTLS accept loop~n"),
     %% kick off the accept loop
     self() ! accept,
     {ok, #state{listen_sock=ListenSock, port=AssignedPort,
@@ -49,6 +50,13 @@ terminate(_R, #state{listen_sock=Sock}) ->
 
 code_change(_, State, _) -> {ok, State}.
 
+get_enet_host_pid(Port) when is_integer(Port) ->
+    Key = {n, l, {enet_host, Port}},
+    case gproc:whereis_name(Key) of
+        undefined -> {error, not_found};
+        Pid       -> {ok, Pid}
+    end.
+
 %%--------------------------------------------------------------------
 accept_loop(ListenSock, Port, ConnectFun) ->
     case ssl:transport_accept(ListenSock) of
@@ -56,15 +64,19 @@ accept_loop(ListenSock, Port, ConnectFun) ->
         case ssl:handshake(SessionSock, [], 5000) of
           ok ->
             %% spawn a supervised DTLS worker
-            {ok, Pid} = supervisor:start_child(
-                           {enet_host_sup, Port},
-                           [SessionSock]
-                         ),
-            ssl:controlling_process(SessionSock, Pid),
+            %%{ok, Pid} = supervisor:start_child(
+            %%               {enet_host_sup, Port},
+            %%               [SessionSock]
+            %%             ),
+            %%{ok, Pid} = get_enet_host_pid(),
+            Host = gproc:where({n, l, {enet_host, Port}}),
+            enet_host:give_socket(ssl, Host, SessionSock),
+            io:format("DTLS handshake success~n");
+            %%ssl:controlling_process(SessionSock, Pid),
             %% notify watchers
-            gproc:send({n, l, {enet_host, Port}},
-                       {new_dtls_connection, Port, SessionSock}),
-            ConnectFun(SessionSock);
+            %%gproc:send({n, l, {enet_host, Port}},
+            %%           {new_dtls_connection, Port, SessionSock}),
+            %%ConnectFun(SessionSock);
           {error, Reason} ->
             io:format("DTLS handshake failed: ~p~n", [Reason]),
             ssl:close(SessionSock)
