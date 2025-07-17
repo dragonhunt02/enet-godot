@@ -22,4 +22,5 @@ init([]) ->
 
 %% Called by listener when a new socket arrives
 start_child(Transport, Socket) ->
+    io:format("Starting new session socket ~p~n", [Socket]),
     supervisor:start_child(?MODULE, [Transport, Socket]).
