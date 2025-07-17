@@ -2,7 +2,7 @@
 -module(dtls_echo_listener).
 -behaviour(gen_server).
 
--export([start_link/1]).
+-export([start_link/3]).
 -export([init/1, handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {
