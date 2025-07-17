@@ -19,8 +19,8 @@ init(Port) ->
     PrivDir = code:priv_dir(esockd),
     DtlsOpts = [
       {mode, binary}, {reuseaddr, true}, {active, 100},
-      {certfile, filename:join(PrivDir, "demo.crt")},
-      {keyfile,  filename:join(PrivDir, "demo.key")}
+      {certfile, filename:join(PrivDir, "cert.pem")}, %%"demo.crt")},
+      {keyfile,  filename:join(PrivDir, "key.pem")} %%"demo.key")}
     ],
     Opts = [
       {acceptors, 4},
