@@ -38,6 +38,14 @@ handle_info(_Info, State) ->
     %% We don’t expect “normal” messages here
     {noreply, State}.
 
+handle_cast(_Msg, State) ->
+    %% No action taken; just continue
+    {noreply, State}.
+
+handle_call(_Request, _From, State) ->
+    %% Respond with a default reply
+    {reply, ok, State}.
+
 terminate(_Reason, _State) ->
     ok.
 
