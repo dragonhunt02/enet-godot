@@ -49,20 +49,21 @@ start_host(Port, ConnectFun, Options) ->
     ConnectFun ::
         mfargs()
         | fun((map()) -> {ok, pid()} | {error, term()}),
-    Options :: [{atom(), term()}, ...],
-    DTLSOptions:: [{atom(), term()}, ...]
+    Options :: [{atom(), term()}, ...]
+    %%DTLSOptions:: [{atom(), term()}, ...]
 ) ->
     {ok, port_number()} | {error, term()}.
 
-start_dtls_host(Port, ConnectFun, Options, DTLSOptions) ->
-    {ok, Socket} = ssl:listen(Port, enet_host:socket_dtls_options()),
-    {ok, {_LocalIP, AssignedPort}} = inet:sockname(Socket),
-    case enet_sup:start_host_supervisor(AssignedPort, ConnectFun, Options, dtls) of
+start_dtls_host(Port, ConnectFun, Options) -> %% , DTLSOptions
+    %%{ok, Socket} = ssl:listen(Port, enet_host:socket_dtls_options()),
+    %%{ok, {_LocalIP, AssignedPort}} = inet:sockname(Socket),
+    case enet_sup:start_host_dtls_supervisor(Port, ConnectFun, Options) of
         {error, Reason} ->
             {error, Reason};
         {ok, _HostSup} ->
-            Host = gproc:where({n, l, {enet_host, AssignedPort}}),
-            enet_host:give_socket(ssl, Host, Socket),
+            io:format("start_host_dtls_supervisor~n"),
+            %%Host = gproc:where({n, l, {enet_host, AssignedPort}}),
+            %%enet_host:give_socket(ssl, Host, Socket),
             {ok, AssignedPort}
     end.
 
