@@ -2,7 +2,7 @@
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
--export([start_link/0, init/1, start_child/2]).
+-export([start_link/3, init/1, start_child/2]).
 
 start_link(_Port, _ConnectFun, _Options) ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
