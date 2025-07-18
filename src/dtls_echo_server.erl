@@ -34,6 +34,8 @@ handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket
         io:format("Echo server trandport ok socket ~p~n", [Socket]),
         {ok, Peer} = Transport:peername(Socket),
         State = State0#state{socket=Socket, peername=Peer},
+        Host = gproc:where({n, l, {enet_host, 7777}}), %%AssignedPort
+        enet_host:give_socket(Host, Socket, Transport),
         {noreply, State};
       {error, Reason} ->
         io:format("Echo server transport fail reason ~p~n", [Reason]),
