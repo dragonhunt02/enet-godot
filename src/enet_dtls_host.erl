@@ -115,24 +115,11 @@ init({AssignedPort, ConnectFun, Options}) ->
             {mtu, ?HOST_DEFAULT_MTU}
         ]
     ),
-    case gen_udp:open(AssignedPort, socket_options()) of
-        {error, eaddrinuse} ->
-            %%
-            %% A socket has already been opened on this port
-            %% - The socket will be given to us later
-            %%
-            {ok, #state{connect_fun = ConnectFun, compressor = Compressor}};
-        {ok, Socket} ->
-            %%
-            %% We were able to open a new socket on this port
-            %% - It means we have been restarted by the supervisor
-            %% - Set it to active mode
-            %%
-            ok = inet:setopts(Socket, [{active, true}]),
-            {ok, #state{connect_fun = ConnectFun, 
-                        compressor = Compressor,
-                        socket = Socket}}
-    end.
+    %%TODO: Evaluate restart behaviour
+    %%ok = inet:setopts(Socket, [{active, true}]),
+    {ok, #state{connect_fun = ConnectFun, 
+                compressor = Compressor,
+                socket = Socket}}.
 
 handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
     %%
@@ -166,6 +153,7 @@ handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
             error:exists -> {error, exists}
         end,
     {reply, Reply, S};
+
 handle_call({send_outgoing_commands, C, IP, Port, ID}, _From, S) ->
     %%
     %% Received outgoing commands from a peer.
@@ -200,6 +188,7 @@ handle_call({send_outgoing_commands, C, IP, Port, ID}, _From, S) ->
 %%%
 
 handle_cast({give_socket, Socket}, S) ->
+    %% Transport:setopts(Socket, [{active, 100}]),
     ok = inet:setopts(Socket, [{active, true}]),
     {noreply, S#state{socket = Socket}};
 handle_cast(_Msg, State) ->
@@ -268,6 +257,7 @@ handle_info({udp, Socket, IP, Port, Packet}, S) ->
             end
     end,
     {noreply, S};
+
 handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
     %%
     %% A Peer process has exited.
