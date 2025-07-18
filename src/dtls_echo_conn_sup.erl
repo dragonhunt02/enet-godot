@@ -1,4 +1,5 @@
 %% src/dtls_echo_conn_sup.erl
+%% Supervisor of each hosted ssl port using raw sockets.
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
