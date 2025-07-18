@@ -49,7 +49,11 @@ handle_cast({handshake}, State0 = #state{transport=Transport, socket=RawSocket, 
         Transport:fast_close(RawSocket),
         {stop, {handshake_failed, Reason}, State0}
         %%{stop, {wait_error, Reason}}
-    end.
+    end;
+
+handle_cast(_Msg, State) ->
+    %% No action taken; just continue
+    {noreply, State}.
 
 %%% Handle all DTLS/SSL messages
 handle_info({ssl, _Raw, Packet}, State = #state{transport=T, socket=S, peername=P}) ->
@@ -77,10 +81,6 @@ handle_info({'EXIT', _From, _Reason}, State) ->
     {stop, normal, State};
 
 handle_info(_, State) ->
-    {noreply, State}.
-
-handle_cast(_Msg, State) ->
-    %% No action taken; just continue
     {noreply, State}.
 
 handle_call(_Request, _From, State) ->
