@@ -25,12 +25,12 @@ init({Transport, RawSocket}) ->
     State0 = #state{transport = Transport,
                     socket    = RawSocket,
                     peername  = PeerName},
-    gen_server:cast(self(), handshake),
+    gen_server:cast(self(), {handshake}),
     {ok, State0}. %%, {continue, handshake}}.
 
 
 %%handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
-handle_cast(handshake, State0 = #state{transport=Transport, socket=RawSocket, peername=PeerName}) ->
+handle_cast({handshake}, State0 = #state{transport=Transport, socket=RawSocket, peername=PeerName}) ->
         io:format("Echo server handshake socket ~p~n", [RawSocket]),
     %% Upgrade the raw socket to a DTLS session
     case Transport:wait(RawSocket) of
