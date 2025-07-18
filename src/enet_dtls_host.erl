@@ -50,9 +50,11 @@ start_link(Port, ConnectFun, Options) ->
 socket_options() ->
     [binary, {active, false}, {reuseaddr, false}, {broadcast, true}].
 
-give_socket(Host, Socket) ->
-    ok = gen_udp:controlling_process(Socket, Host),
-    gen_server:cast(Host, {give_socket, Socket}).
+give_socket(Host, Socket, Transport) ->
+    ok = Transport:controlling_process(Socket, Host),
+    io:format("Process transferred 1"),
+    %%ok = gen_udp:controlling_process(Socket, Host),
+    gen_server:cast(Host, {give_socket, Socket, Transport}).
 
 connect(Host, IP, Port, ChannelCount, Data) ->
     gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
@@ -191,10 +193,11 @@ handle_call({send_outgoing_commands, C, IP, Port, ID}, _From, S) ->
 %%% handle_cast
 %%%
 
-handle_cast({give_socket, Socket}, S) ->
-    %% Transport:setopts(Socket, [{active, 100}]),
-    ok = inet:setopts(Socket, [{active, true}]),
-    {noreply, S#state{socket = Socket}};
+handle_cast({give_socket, Socket, Transport}, S) ->
+    ok = Transport:setopts(Socket, [{active, true}]),
+    io:format("Process transferred 2"),
+    %%ok = inet:setopts(Socket, [{active, true}]),
+    {noreply, S#state{socket = Socket, transport = Transport}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
