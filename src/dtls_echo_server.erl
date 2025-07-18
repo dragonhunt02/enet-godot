@@ -20,22 +20,25 @@ init({Transport, RawSocket}) ->
     io:format("Init echo server socket ~p~n", [RawSocket]),
 
     %% Store raw args and defer the actual wait() to handle_continue
+    {ok, PeerName} = Transport:peername(Socket),
     State0 = #state{transport = Transport,
                     socket    = RawSocket,
-                    peername  = undefined},
-    {ok, State0, {continue, handshake}}.
+                    peername  = PeerName},
+    gen_server:cast(self(), handshake),
+    {ok, State0}. %%, {continue, handshake}}.
 
 
-handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
+%%handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
+handle_cast(handshake, State0 = #state{transport=Transport, socket=RawSocket, peername=PeerName}) ->
         io:format("Echo server handshake socket ~p~n", [RawSocket]),
     %% Upgrade the raw socket to a DTLS session
     case Transport:wait(RawSocket) of
       {ok, Socket} ->
         io:format("Echo server trandport ok socket ~p~n", [Socket]),
-        {ok, Peer} = Transport:peername(Socket),
+        %% {ok, Peer} = Transport:peername(Socket),
         {ok, {SockIP, SockPort}} = Transport:sockname(Socket),
         io:format("Print port ~p:~p~n", [SockIP, SockPort]),
-        State = State0#state{socket=Socket, peername=Peer},
+        State = State0#state{socket=Socket, peername=PeerName},
         Host = gproc:where({n, l, {enet_host, SockPort}}), %%AssignedPort
         enet_host:give_socket(Host, Socket, Transport),
         {stop, normal, State};
