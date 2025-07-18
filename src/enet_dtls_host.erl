@@ -31,6 +31,8 @@
 ]).
 
 -record(state, {
+    transport,
+    peername,
     socket,
     compressor,
     connect_fun
@@ -119,7 +121,9 @@ init({AssignedPort, ConnectFun, Options}) ->
     %%ok = inet:setopts(Socket, [{active, true}]),
     {ok, #state{connect_fun = ConnectFun, 
                 compressor = Compressor,
-                socket = Socket}}.
+                transport = undefined,
+                peername = undefined,
+                socket = undefined}}.
 
 handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
     %%
@@ -197,6 +201,32 @@ handle_cast(_Msg, State) ->
 %%%
 %%% handle_info
 %%%
+
+%%% Handle all DTLS/SSL messages
+handle_info({ssl, _Raw, Packet}, State = #state{transport=T, socket=S, peername=P}) ->
+    io:format("Inside host sup~n"),
+    io:format("~s ← ~p~n", [esockd:format(P), Packet]),
+    T:async_send(S, Packet),
+    {noreply, State};
+
+handle_info({ssl_passive, _Raw}, State = #state{transport=T, socket=S, peername=P}) ->
+    io:format("~s → passive~n", [esockd:format(P)]),
+    T:setopts(S, [{active, 100}]),
+    {noreply, State};
+
+handle_info({inet_reply, _Raw, ok}, State) ->
+    {noreply, State};
+
+handle_info({ssl_closed, _Raw}, State) ->
+    {stop, normal, State};
+
+handle_info({ssl_error, _Raw, Reason}, State = #state{peername=P}) ->
+    io:format("~s error: ~p~n", [esockd:format(P), Reason]),
+    {stop, Reason, State};
+
+%%
+%% Handle UDP
+%%
 
 handle_info({udp, Socket, IP, Port, Packet}, S) ->
     %%
