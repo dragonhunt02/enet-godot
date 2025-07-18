@@ -235,6 +235,9 @@ handle_info({ssl_error, _Raw, Reason}, State = #state{peername=P}) ->
 %%
 
 handle_info({udp, Socket, IP, Port, Packet}, S) ->
+    demux_packet(Socket, IP, Port, Packet, S).
+
+demux_packet(Socket, IP, Port, Packet, S) ->
     %%
     %% Received a UDP packet.
     %%
@@ -286,6 +289,8 @@ handle_info({udp, Socket, IP, Port, Packet}, S) ->
         PeerID ->
             case enet_pool:pick_peer(LocalPort, Socket, PeerID) of
                 %% Unknown peer - drop the packet
+                %% In SSL, will drop packet if socket and packet peerid
+                %% don't match
                 false ->
                     ok;
                 Pid ->
