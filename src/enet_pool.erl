@@ -37,19 +37,19 @@ start_link(Port, PeerLimit) ->
     gen_server:start_link(?MODULE, [Port, PeerLimit], []).
 
 add_peer(Port, Socket, Name) ->
-    gproc_pool:add_worker(Port, Socket, Name).
+    gproc_pool:add_worker(Port, {Socket, Name}).
 
 pick_peer(Port, Socket, PeerID) ->
-    gproc_pool:pick_worker(Port, Socket, PeerID).
+    gproc_pool:pick_worker(Port, {Socket, PeerID}).
 
 remove_peer(Port, Socket, Name) ->
-    gproc_pool:remove_worker(Port, Socket, Name).
+    gproc_pool:remove_worker(Port, {Socket, Name}).
 
 connect_peer(Port, Socket, Name) ->
-    gproc_pool:connect_worker(Port, Socket, Name).
+    gproc_pool:connect_worker(Port, {Socket, Name}).
 
 disconnect_peer(Port, Socket, Name) ->
-    gproc_pool:disconnect_worker(Port, Socket, Name).
+    gproc_pool:disconnect_worker(Port, {Socket, Name}).
 
 connect_peer(Port, Name) ->
     gproc_pool:connect_worker(Port, Name).
@@ -62,7 +62,7 @@ active_peers(Port) ->
     gproc_pool:active_workers(Port).
 
 worker_id(Port, Socket, Name) ->
-    gproc_pool:worker_id(Port, Socket, Name).
+    gproc_pool:worker_id(Port, {Socket, Name}).
 
 %%%===================================================================
 %%% gen_server callbacks
