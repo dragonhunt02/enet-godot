@@ -9,6 +9,8 @@
     remove_peer/3, 
     connect_peer/3,
     disconnect_peer/3,
+    connect_peer/2,
+    disconnect_peer/2,
     active_peers/1,
     worker_id/3
 ]).
@@ -47,6 +49,12 @@ connect_peer(Port, Socket, Name) ->
 
 disconnect_peer(Port, Socket, Name) ->
     gproc_pool:disconnect_worker(Port, Socket, Name).
+
+connect_peer(Port, Name) ->
+    gproc_pool:connect_worker(Port, Name).
+
+disconnect_peer(Port, Name) ->
+    gproc_pool:disconnect_worker(Port, Name).
 
 active_peers(Port) ->
     gproc_pool:active_workers(Port).
