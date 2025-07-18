@@ -9,7 +9,7 @@
 -export([
     start_link/3,
     socket_options/0,
-    give_socket/2,
+    give_socket/3,
     connect/5,
     send_outgoing_commands/4,
     send_outgoing_commands/5,
@@ -263,7 +263,7 @@ handle_info({udp, Socket, IP, Port, Packet}, S) ->
             %% No particular peer is the receiver of this packet.
             %% Create a new peer.
             Ref = make_ref(),
-            try enet_pool:add_peer(LocalPort, Ref) of
+            try enet_pool:add_peer(LocalPort, Socket, Ref) of
                 PeerID ->
                     Peer = #enet_peer{
                         handshake_flow = remote,
@@ -281,7 +281,7 @@ handle_info({udp, Socket, IP, Port, Packet}, S) ->
                 error:exists -> {error, exists}
             end;
         PeerID ->
-            case enet_pool:pick_peer(LocalPort, PeerID) of
+            case enet_pool:pick_peer(LocalPort, Socket, PeerID) of
                 %% Unknown peer - drop the packet
                 false ->
                     ok;
@@ -297,8 +297,11 @@ handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
     %%
     %% - Remove it from the pool
     %%
+    #state{
+        socket = Socket
+    } = S,
     LocalPort = get_port(self()),
-    true = enet_pool:remove_peer(LocalPort, Ref),
+    true = enet_pool:remove_peer(LocalPort, Socket, Ref),
     {noreply, S}.
 
 %%%
