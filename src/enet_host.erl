@@ -135,12 +135,13 @@ handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
     %% - Start the peer process
     %%
     #state{
+        socket = Socket,
         connect_fun = ConnectFun
     } = S,
     Ref = make_ref(),
     LocalPort = get_port(self()),
     Reply =
-        try enet_pool:add_peer(LocalPort, Ref) of
+        try enet_pool:add_peer(LocalPort, Socket, Ref) of
             PeerID ->
                 Peer = #enet_peer{
                     handshake_flow = local,
