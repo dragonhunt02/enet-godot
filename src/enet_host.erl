@@ -1,4 +1,4 @@
--module(enet_dtls_host).
+-module(enet_host).
 -behaviour(gen_server).
 
 -include("enet_peer.hrl").
