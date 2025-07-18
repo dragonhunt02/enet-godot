@@ -235,7 +235,8 @@ handle_info({ssl_error, _Raw, Reason}, State = #state{peername=P}) ->
 %%
 
 handle_info({udp, Socket, IP, Port, Packet}, S) ->
-    demux_packet(Socket, IP, Port, Packet, S).
+    demux_packet(Socket, IP, Port, Packet, S),
+    {noreply, S};
 
 demux_packet(Socket, IP, Port, Packet, S) ->
     %%
@@ -296,8 +297,8 @@ demux_packet(Socket, IP, Port, Packet, S) ->
                 Pid ->
                     enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
             end
-    end,
-    {noreply, S};
+    end.
+    %%{noreply, S};
 
 handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
     %%
