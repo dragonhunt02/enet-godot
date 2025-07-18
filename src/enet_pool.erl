@@ -56,7 +56,7 @@ connect_peer(Port, Name) ->
 disconnect_peer(Port, Name) ->
     gproc_pool:disconnect_worker(Port, Name).
 worker_id(Port, Name) ->
-    gproc_pool:worker_id(Port, Socket, Name).
+    gproc_pool:worker_id(Port, Name).
 
 active_peers(Port) ->
     gproc_pool:active_workers(Port).
