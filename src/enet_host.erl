@@ -238,6 +238,38 @@ handle_info({udp, Socket, IP, Port, Packet}, S) ->
     demux_packet(Socket, IP, Port, Packet, S),
     {noreply, S};
 
+handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
+    %%
+    %% A Peer process has exited.
+    %%
+    %% - Remove it from the pool
+    %%
+    #state{
+        socket = Socket
+    } = S,
+    LocalPort = get_port(self()),
+    true = enet_pool:remove_peer(LocalPort, Socket, Ref),
+    {noreply, S}.
+
+%%%
+%%% terminate
+%%%
+
+terminate(Reason, S) ->
+    io:format("terminatin ~p~n",[Reason]).
+    %%ok = gen_udp:close(S#state.socket).
+
+%%%
+%%% code_change
+%%%
+
+code_change(_OldVsn, State, _Extra) ->
+    {ok, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 demux_packet(Socket, IP, Port, Packet, S) ->
     %%
     %% Received a UDP packet.
@@ -298,39 +330,6 @@ demux_packet(Socket, IP, Port, Packet, S) ->
                     enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
             end
     end.
-    %%{noreply, S};
-
-handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
-    %%
-    %% A Peer process has exited.
-    %%
-    %% - Remove it from the pool
-    %%
-    #state{
-        socket = Socket
-    } = S,
-    LocalPort = get_port(self()),
-    true = enet_pool:remove_peer(LocalPort, Socket, Ref),
-    {noreply, S}.
-
-%%%
-%%% terminate
-%%%
-
-terminate(Reason, S) ->
-    io:format("terminatin ~p~n",[Reason]).
-    %%ok = gen_udp:close(S#state.socket).
-
-%%%
-%%% code_change
-%%%
-
-code_change(_OldVsn, State, _Extra) ->
-    {ok, State}.
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
 
 get_time() ->
     erlang:system_time(1000) band 16#FFFF.
