@@ -32,10 +32,11 @@ handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket
     case Transport:wait(RawSocket) of
       {ok, Socket} ->
         io:format("Echo server trandport ok socket ~p~n", [Socket]),
-        {ok, {IP, Port} = Peer} = Transport:sockname(Socket),
-        io:format("Print port ~p:~p~n", [IP, Port]),
+        {ok, Peer} = Transport:peername(Socket),
+        {ok, {SockIP, SockPort}} = Transport:sockname(Socket),
+        io:format("Print port ~p:~p~n", [SockIP, SockPort]),
         State = State0#state{socket=Socket, peername=Peer},
-        Host = gproc:where({n, l, {enet_host, 7777}}), %%AssignedPort
+        Host = gproc:where({n, l, {enet_host, SockPort}}), %%AssignedPort
         enet_host:give_socket(Host, Socket, Transport),
         {stop, normal, State};
         %% {noreply, State};
