@@ -51,10 +51,20 @@ socket_options() ->
     [binary, {active, false}, {reuseaddr, false}, {broadcast, true}].
 
 give_socket(Host, Socket, Transport) ->
-    ok = Transport:controlling_process(Socket, Host),
-    io:format("Process transferred 1"),
+    case Transport:controlling_process(Socket, Host) of
+        ok ->
+            io:format("Process transferred 1~n"),
+            gen_server:cast(Host, {give_socket, Socket, Transport}),
+            {ok, Host};
+        {error, Reason} ->
+            io:format("Failed to transfer process: ~p~n", [Reason]),
+            {error, Reason}
+    end.
+
+    %%ok = Transport:controlling_process(Socket, Host),
+    %%io:format("Process transferred 1"),
     %%ok = gen_udp:controlling_process(Socket, Host),
-    gen_server:cast(Host, {give_socket, Socket, Transport}).
+    %%gen_server:cast(Host, {give_socket, Socket, Transport}).
 
 connect(Host, IP, Port, ChannelCount, Data) ->
     gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
