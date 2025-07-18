@@ -62,8 +62,8 @@ start_host_dtls_supervisor(Port, ConnectFun, Options) ->
         modules => [enet_host_sup]
     },
     supervisor:start_child(?MODULE, Listener),
-    supervisor:start_child(?MODULE, ConnSup).
-    %%supervisor:start_child(?MODULE, EnetHost).
+    supervisor:start_child(?MODULE, ConnSup),
+    supervisor:start_child(?MODULE, EnetHost).
 
 stop_host_supervisor(HostSup) ->
     supervisor:terminate_child(?MODULE, HostSup).
