@@ -196,9 +196,10 @@ handle_call({send_outgoing_commands, C, IP, Port, ID}, _From, S) ->
 
 handle_cast({give_socket, Socket, Transport}, S) ->
     ok = Transport:setopts(Socket, [{active, true}]),
+    {ok, PeerName} = Transport:peername(Socket),
     io:format("Process transferred 2"),
     %%ok = inet:setopts(Socket, [{active, true}]),
-    {noreply, S#state{socket = Socket, transport = Transport}};
+    {noreply, S#state{socket = Socket, transport = Transport, peername = PeerName}};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -209,6 +210,7 @@ handle_cast(_Msg, State) ->
 %%% Handle all DTLS/SSL messages
 handle_info({ssl, _Raw, Packet}, State = #state{transport=T, socket=S, peername=P}) ->
     io:format("Inside host sup~n"),
+    %%io:format("Inside host ~p~n", [Packet]),
     io:format("~s ← ~p~n", [esockd:format(P), Packet]),
     T:async_send(S, Packet),
     {noreply, State};
@@ -309,8 +311,9 @@ handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
 %%% terminate
 %%%
 
-terminate(_Reason, S) ->
-    ok = gen_udp:close(S#state.socket).
+terminate(Reason, S) ->
+    io:format("terminatin ~p~n",[Reason]).
+    %%ok = gen_udp:close(S#state.socket).
 
 %%%
 %%% code_change
