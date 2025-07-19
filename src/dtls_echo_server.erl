@@ -41,11 +41,11 @@ handle_cast({handshake}, State0 = #state{transport=Transport, raw_socket=RawSock
         io:format("Print port ~p:~p~n", [SockIP, SockPort]),
         
         Host = gproc:where({n, l, {enet_host, SockPort}}), %%AssignedPort
-        IsSocketOwned = case give_socket(Host, Socket, Transport) of
+        IsSocketOwned = case enet_host:give_socket(Host, Socket, Transport) of
             {ok, _} -> false;
             {error, Reason2} -> 
                             io:format("Failed to give socket control to process: ~p.~n~p", [Host, Reason2]),
-                            true;
+                            true
         end,
         State = State0#state{socket=Socket, peername=PeerName, is_socket_owned=IsSocketOwned},
         %%enet_host:give_socket(Host, Socket, Transport),
