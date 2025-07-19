@@ -3,10 +3,17 @@
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
--export([start_link/3, init/1, start_child/2]).
+-export([start_link/3, init/1, start_child/3]).
 
 start_link(Port, _ConnectFun, _Options) ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    io:format("linkk ~p~n", [Port]),
+    supervisor:start_link(spec_name(Port), ?MODULE, []).
+
+spec_name(Port) ->
+    {via, gproc, {n, l, {?MODULE, Port}}}.
+    %%{?MODULE, Port}.
+    %%local, spec_name(Port)
+    %%list_to_atom(atom_to_list(?MODULE) ++ "_" ++ integer_to_list(Port)).
 
 init([]) ->
     %% Each connection is a dtls_echo_server child
@@ -22,6 +29,7 @@ init([]) ->
     {ok, {{simple_one_for_one, 5, 10}, [ConnChild]}}.
 
 %% Called by listener when a new socket arrives
-start_child(Transport, Socket) ->
+start_child(Transport, Socket, Port) ->
     io:format("Starting new session socket ~p~n", [Socket]),
-    supervisor:start_child(?MODULE, [Transport, Socket]).
+    %%{_, {_, Port}} = Transport:sockname(Socket),
+    supervisor:start_child(spec_name(Port), [Transport, Socket]).
