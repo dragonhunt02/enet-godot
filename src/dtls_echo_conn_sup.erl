@@ -6,7 +6,7 @@
 -export([start_link/3, init/1, start_child/2]).
 
 start_link(Port, _ConnectFun, _Options) ->
-    supervisor:start_link({local, {?MODULE, Port}}, ?MODULE, []).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     %% Each connection is a dtls_echo_server child
