@@ -8,8 +8,10 @@
 
 -record(state, {
   transport,
-  socket,
-  peername
+  raw_socket,
+  is_socket_owned = true,
+  socket = undefined,
+  peername = undefined
 }).
 
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
@@ -22,14 +24,13 @@ init({Transport, RawSocket}) ->
 
     %% Store raw args and defer the actual wait() to handle_continue
     State0 = #state{transport = Transport,
-                    socket    = RawSocket,
-                    peername  = undefined},
+                    raw_socket = RawSocket},
     gen_server:cast(self(), {handshake}),
     {ok, State0}. %%, {continue, handshake}}.
 
 
 %%handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
-handle_cast({handshake}, State0 = #state{transport=Transport, socket=RawSocket}) ->
+handle_cast({handshake}, State0 = #state{transport=Transport, raw_socket=RawSocket}) ->
         io:format("Echo server handshake socket ~p~n", [RawSocket]),
     %% Upgrade the raw socket to a DTLS session
     case Transport:wait(RawSocket) of
@@ -38,15 +39,22 @@ handle_cast({handshake}, State0 = #state{transport=Transport, socket=RawSocket})
         {ok, PeerName} = Transport:peername(Socket),
         {ok, {SockIP, SockPort}} = Transport:sockname(Socket),
         io:format("Print port ~p:~p~n", [SockIP, SockPort]),
-        State = State0#state{socket=Socket, peername=PeerName},
+        
         Host = gproc:where({n, l, {enet_host, SockPort}}), %%AssignedPort
-        enet_host:give_socket(Host, Socket, Transport),
+        IsSocketOwned = case give_socket(Host, Socket, Transport) of
+            {ok, _} -> false;
+            {error, Reason2} -> 
+                            io:format("Failed to give socket control to process: ~p.~n~p", [Host, Reason2]),
+                            true;
+        end,
+        State = State0#state{socket=Socket, peername=PeerName, is_socket_owned=IsSocketOwned},
+        %%enet_host:give_socket(Host, Socket, Transport),
         {stop, normal, State};
         %% {noreply, State};
-      {error, Reason} ->
-        io:format("Echo server transport fail reason ~p~n", [Reason]),
-        Transport:fast_close(RawSocket),
-        {stop, {handshake_failed, Reason}, State0}
+      {error, Reason1} ->
+        io:format("Echo server transport fail reason ~p~n", [Reason1]),
+        %%Transport:fast_close(RawSocket),
+        {stop, {handshake_failed, Reason1}, State0}
         %%{stop, {wait_error, Reason}}
     end;
 
@@ -86,9 +94,21 @@ handle_call(_Request, _From, State) ->
     %% Respond with a default reply
     {reply, ok, State}.
 
-terminate(_Reason, #state{transport=T, socket=S}) ->
-    T:fast_close(S),
-    ok.
+terminate(_Reason, #state{transport = T, raw_socket = RawSocket, socket = undefined}) ->
+    %% Failed to upgrade raw_socket, close
+    T:fast_close(RawSocket),
+    ok;
+terminate(_Reason, #state{transport = T, socket = Socket, is_socket_owned = true}) ->
+    %% Failed to give socket control, close
+    T:fast_close(Socket),
+    ok;
+terminate(_Reason, #state{transport = T, socket = Socket, is_socket_owned = false}) ->
+    %% Socket control handed off, so don't manage it
+    ok;
+terminate(Reason, State) ->
+    %% Invalid Unexpected State
+    io:format("Invalid state on terminate/2: ~p~n", [Reason]),
+    unknown.
 
 code_change(_Old, State, _Extra) ->
     {ok, State}.
