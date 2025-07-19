@@ -29,7 +29,7 @@ init(Port) ->
     ],
 
     %% Tell esockd to use our connection‐sup to spawn each handler
-    MFArgs = {dtls_echo_conn_sup, start_child, []},
+    MFArgs = {dtls_echo_conn_sup, start_child, [Port]},
     {ok, _ListenSock} = esockd:open_dtls('echo/dtls', Port, Opts, MFArgs),
 
     {ok, #state{port=Port}}.
