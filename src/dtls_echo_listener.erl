@@ -51,3 +51,37 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%% Functions
+open_port(dtls, Port, Opts) ->
+    MFArgs = {dtls_echo_conn_sup, start_child, [Port]},
+    case esockd:open_dtls("echo/dtls", Port, Opts, MFArgs) of
+        {ok, ListenSock} ->
+            io:format("DTLS port ~p opened successfully.~n", [Port]),
+            {ok, ListenSock};
+        {error, Reason} ->
+            io:format("Failed to open DTLS port ~p: ~p~n", [Port, Reason]),
+            {error, Reason}
+    end.
+
+open_port(udp, Port, Opts) ->
+    MFArgs = {dtls_echo_conn_sup, start_child, [Port]},
+    case esockd:open_udp('echo/udp', Port, Opts, MFArgs) of
+        {ok, ListenSock} ->
+            io:format("UDP (insecure) port ~p opened successfully.~n", [Port]),
+            {ok, ListenSock};
+        {error, Reason} ->
+            io:format("Failed to open UDP port ~p: ~p~n", [Port, Reason]),
+            {error, Reason}
+    end.
+
+close_port(Proto, Port) ->
+    case esockd:close(Proto, Port) of
+        ok ->
+            io:format("Port ~p ~p closed successfully.~n", [Proto, Port]),
+            {ok, ListenSock};
+        {error, Reason} ->
+            io:format("Failed to close port ~p ~p: ~p~n", [Proto, Port, Reason]),
+            {error, Reason}
+    end.
+
