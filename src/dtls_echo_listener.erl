@@ -3,6 +3,7 @@
 -behaviour(gen_server).
 
 -export([start_link/3]).
+-export([open_port/3, close_port/2]).
 -export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
 
 -record(state, {
@@ -55,14 +56,14 @@ code_change(_OldVsn, State, _Extra) ->
 %% Functions
 open_port(dtls, Port, Opts) ->
     MFArgs = {dtls_echo_conn_sup, start_child, [Port]},
-    case esockd:open_dtls("echo/dtls", Port, Opts, MFArgs) of
+    case esockd:open_dtls('echo/dtls', Port, Opts, MFArgs) of
         {ok, ListenSock} ->
             io:format("DTLS port ~p opened successfully.~n", [Port]),
             {ok, ListenSock};
         {error, Reason} ->
             io:format("Failed to open DTLS port ~p: ~p~n", [Port, Reason]),
             {error, Reason}
-    end.
+    end;
 
 open_port(udp, Port, Opts) ->
     MFArgs = {dtls_echo_conn_sup, start_child, [Port]},
@@ -79,7 +80,7 @@ close_port(Proto, Port) ->
     case esockd:close(Proto, Port) of
         ok ->
             io:format("Port ~p ~p closed successfully.~n", [Proto, Port]),
-            {ok, ListenSock};
+            {ok, Port};
         {error, Reason} ->
             io:format("Failed to close port ~p ~p: ~p~n", [Proto, Port, Reason]),
             {error, Reason}
