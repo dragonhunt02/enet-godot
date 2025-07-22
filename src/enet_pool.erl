@@ -4,16 +4,13 @@
 %% API
 -export([
     start_link/2,
-    add_peer/3,
-    pick_peer/3,
-    remove_peer/3, 
-    connect_peer/3,
-    disconnect_peer/3,
+    add_peer/2,
+    pick_peer/2,
+    remove_peer/2,
     connect_peer/2,
     disconnect_peer/2,
-    worker_id/2,
     active_peers/1,
-    worker_id/3
+    worker_id/2
 ]).
 
 %% gen_server callbacks
@@ -36,33 +33,26 @@
 start_link(Port, PeerLimit) ->
     gen_server:start_link(?MODULE, [Port, PeerLimit], []).
 
-add_peer(Port, Socket, Name) ->
-    gproc_pool:add_worker(Port, {Socket, Name}).
+add_peer(Port, Name) ->
+    gproc_pool:add_worker(Port, Name).
 
-pick_peer(Port, Socket, PeerID) ->
-    gproc_pool:pick_worker(Port, {Socket, PeerID}).
+pick_peer(Port, PeerID) ->
+    gproc_pool:pick_worker(Port, PeerID).
 
-remove_peer(Port, Socket, Name) ->
-    gproc_pool:remove_worker(Port, {Socket, Name}).
-
-connect_peer(Port, Socket, Name) ->
-    gproc_pool:connect_worker(Port, {Socket, Name}).
-
-disconnect_peer(Port, Socket, Name) ->
-    gproc_pool:disconnect_worker(Port, {Socket, Name}).
+remove_peer(Port, Name) ->
+    gproc_pool:remove_worker(Port, Name).
 
 connect_peer(Port, Name) ->
     gproc_pool:connect_worker(Port, Name).
+
 disconnect_peer(Port, Name) ->
     gproc_pool:disconnect_worker(Port, Name).
-worker_id(Port, Name) ->
-    gproc_pool:worker_id(Port, Name).
 
 active_peers(Port) ->
     gproc_pool:active_workers(Port).
 
-worker_id(Port, Socket, Name) ->
-    gproc_pool:worker_id(Port, {Socket, Name}).
+worker_id(Port, Name) ->
+    gproc_pool:worker_id(Port, Name).
 
 %%%===================================================================
 %%% gen_server callbacks
