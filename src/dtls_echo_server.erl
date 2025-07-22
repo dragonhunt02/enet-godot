@@ -1,7 +1,6 @@
 %% src/dtls_echo_server.erl
 -module(dtls_echo_server).
 -behaviour(gen_statem).
-
 %%-module(enet_host).
 %%-behaviour(gen_server).
 
@@ -23,29 +22,10 @@
     get_channel_limit/1
 ]).
 
-%% gen_server callbacks
--export([
-    handle_call/3,
-    handle_cast/2,
-    handle_info/2,
-    terminate/2,
-    code_change/3
-]).
-
--record(state, {
-    transport,
-    peername,
-    socket,
-    
-}).
-
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
 
-
 -export([start_link/2]).
-%%-export([handle_info/2]).
 %%-export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
-%% handle_continue/2, 
 %%--------------------------------------------------------------------
 %% gen_statem callbacks
 %%--------------------------------------------------------------------
@@ -245,7 +225,7 @@ connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
     Ref = make_ref(),
     LocalPort = get_port(self()),
     Reply =
-        try enet_pool:add_peer(LocalPort, Socket, Ref) of
+        try enet_pool:add_peer(LocalPort, Ref) of
             PeerID ->
                 Peer = #enet_peer{
                     handshake_flow = local,
@@ -348,7 +328,7 @@ connected(info, {gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
         socket = Socket
     } = S,
     LocalPort = get_port(self()),
-    true = enet_pool:remove_peer(LocalPort, Socket, Ref),
+    true = enet_pool:remove_peer(LocalPort, Ref),
     {keep_state, S};
 
 connected(info, _Other, State) ->
@@ -425,7 +405,7 @@ demux_packet(Socket, IP, Port, Packet, S) ->
             %% No particular peer is the receiver of this packet.
             %% Create a new peer.
             Ref = make_ref(),
-            try enet_pool:add_peer(LocalPort, Socket, Ref) of
+            try enet_pool:add_peer(LocalPort, Ref) of
                 PeerID ->
                     Peer = #enet_peer{
                         handshake_flow = remote,
@@ -443,7 +423,7 @@ demux_packet(Socket, IP, Port, Packet, S) ->
                 error:exists -> {error, exists}
             end;
         PeerID ->
-            case enet_pool:pick_peer(LocalPort, Socket, PeerID) of
+            case enet_pool:pick_peer(LocalPort, PeerID) of
                 %% Unknown peer - drop the packet
                 %% In SSL, will drop packet if socket and packet peerid
                 %% don't match
