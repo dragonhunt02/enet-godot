@@ -95,6 +95,9 @@ get_outgoing_bandwidth(Host) ->
 get_mtu(Host) ->
     gproc:get_value({p, l, mtu}, Host).
 
+get_peer_id(Host) ->
+    gproc:get_value({p, l, peer_id}, Host).
+
 get_channel_limit(Host) ->
     gproc:get_value({p, l, channel_limit}, Host).
 
@@ -417,6 +420,7 @@ demux_packet(Socket, IP, Port, Packet, S) ->
                         connect_fun = ConnectFun
                     },
                     {ok, Pid} = start_peer(Peer),
+                    true = gproc:reg({p, l, {peer_id, PeerID}}),
                     enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
             catch
                 error:pool_full -> {error, reached_peer_limit};
