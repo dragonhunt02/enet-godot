@@ -28,18 +28,19 @@
 }).
 
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
-start_link(Transport, RawSocket) ->
-    gen_statem:start_link(?MODULE, {Transport, RawSocket}, []).
+start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
+    gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, Transport, RawSocket}, []).
 
 %%--------------------------------------------------------------------
 %% Callback Mode
 %%--------------------------------------------------------------------
 callback_mode() -> state_functions.
 
-init({Transport, RawSocket}) ->
+init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
     process_flag(trap_exit, true),
     io:format("Init echo server socket ~p~n", [RawSocket]),
-
+    io:format("Init echo server AssignedPort ~p~n", [AssignedPort]),
+  
     %% Store raw args and defer the actual wait() to handle_continue
     State0 = #state{transport = Transport,
                     raw_socket = RawSocket},
