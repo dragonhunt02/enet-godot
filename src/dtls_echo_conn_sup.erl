@@ -3,7 +3,7 @@
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
--export([start_link/3, init/1, start_child/3]).
+-export([start_link/3, init/3, start_child/3]).
 
 start_link(Port, ConnectFun, Options) ->
     io:format("linkk ~p~n", [Port]),
