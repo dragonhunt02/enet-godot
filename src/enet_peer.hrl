@@ -5,6 +5,7 @@
          ip,
          port,
          name,
+         manager_name,
          host,
          channels,
          connect_fun,
