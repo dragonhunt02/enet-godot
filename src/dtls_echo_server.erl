@@ -2,6 +2,10 @@
 -module(dtls_echo_server).
 -behaviour(gen_statem).
 
+-include("enet_peer.hrl").
+-include("enet_commands.hrl").
+-include("enet_protocol.hrl").
+
 -export([start_link/5]).
 %%-export([handle_info/2]).
 %%-export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
@@ -26,6 +30,8 @@
   socket = undefined,
   peername = undefined
 }).
+
+-define(NULL_PEER_ID, ?MAX_PEER_ID).
 
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
 start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
@@ -215,8 +221,11 @@ demux_packet(IP, Port, Packet, S) ->
     %% TODO: Replace with random unique 12bit uint excluding 16#FFF 
 %%    make_ref().
 
+get_name(Pid) ->
+    gproc:get_value({p, l, name}, Pid).
+
 get_peer_name(Peer) ->
-    gproc:get_value({p, l, name}, Peer).
+    gproc:get_value({p, l, peer_name}, Peer).
 
 get_peer_id(Peer) ->
     gproc:get_value({p, l, peer_id}, Peer).
