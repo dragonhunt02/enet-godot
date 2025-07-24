@@ -16,6 +16,7 @@
 -export([
   callback_mode/0,
   init/1,
+  client_connect/3,
   handshake/3,
   socket_handoff/3,
   connected/3,
@@ -30,7 +31,9 @@
   socket = undefined,
   peername = undefined,
   connect_fun,
-  compressor
+  compressor,
+  remote_ip = undefined,
+  remote_port = undefined
 }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
@@ -53,6 +56,10 @@
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
 start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
     gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, Transport, RawSocket}, []).
+
+%%% Called via dtls_echo_conn_sup:start_child_connect(HostPort, IP, RemotePort, ChannelCount)
+start_link(AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount) ->
+    gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount}, []).
 
 %%--------------------------------------------------------------------
 %% Callback Mode
@@ -83,6 +90,59 @@ init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
     %%gen_server:cast(self(), {handshake}),
     %%{ok, State0}. %%, {continue, handshake}}.
 
+init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount}) ->
+    process_flag(trap_exit, true),
+    io:format("Init echo client socket ~p~n", [RawSocket]),
+    Ref = make_ref(),
+    gproc:reg({n, l, {enet_demux_peer, Ref}}),
+    gproc:reg({p, l, name}, Ref),
+    gproc:reg({p, l, port}, AssignedPort),
+    %%gproc:reg({p, l, peer_id}, PeerID),
+
+        Compressor = 
+        case lists:keyfind(compression_mode, 1, Options) of
+            {compression_mode, CompressionMode} -> CompressionMode;
+            false -> none
+        end,
+    {ok, RawSocket} = gen_udp:open(0, [{active, true}, {reuseaddr, false}]),
+
+    %% Store raw args and defer the actual wait() to handle_continue
+    State0 = #state{transport = Transport,
+                    raw_socket = RawSocket,
+                    connect_fun = ConnectFun,
+                    compressor = Compressor,
+                    remote_ip = IP,
+                    remote_port = RemotePort
+                   },
+    {ok, client_connect, State0, [{next_event, internal, exec}]}.
+    %%gen_server:cast(self(), {handshake}),
+    %%{ok, State0}. %%, {continue, handshake}}.
+
+client_connect(internal, exec, State0 = #state{transport=Transport, raw_socket=RawSocket, remote_ip = RemoteIP, remote_port = RemotePort}) ->
+    io:format("Echo client handshake socket ~p~n", [RawSocket]),
+    %% Open a UDP socket with ephemeral port
+    %%{ok, RawUdp} = gen_udp:open(0, [{active, false}, {reuseaddr, true}]).
+    Opts = [
+          {fd,            RawSocket},
+          {protocol,      dtls},
+          {certfile,      "client.pem"},
+          {keyfile,       "client_key.pem"},
+          {cacertfile,    "ca.pem"},
+          {verify,        verify_peer}
+        ],
+    %% Upgrade the raw socket to a DTLS session
+    case ssl:connect(RemoteIP, RemotePort, Opts, 5000) of
+      {ok, Socket} ->
+        io:format("Echo client trandport ok socket ~p~n", [Socket]),
+        {ok, PeerName} = ssl:peername(Socket),
+        State = State0#state{socket=Socket, peername=PeerName},
+        {next_state, handshake, State, [{next_event, internal, client}]};
+      {error, Reason} ->
+        io:format("Echo client transport fail reason ~p~n", [Reason]),
+        %%Transport:fast_close(RawSocket),
+        {stop, {handshake_failed, Reason}, State0}
+    end.
+
 %%handle_continue(handshake, State0 = #state{transport=Transport, socket=RawSocket}) ->
 %%handle_cast({handshake}, State0 = #state{transport=Transport, raw_socket=RawSocket}) ->
 handshake(info, {'EXIT', From, Reason}, State) ->
@@ -104,7 +164,31 @@ handshake(internal, exec, State0 = #state{transport=Transport, raw_socket=RawSoc
         %%Transport:fast_close(RawSocket),
         {stop, {handshake_failed, Reason}, State0}
         %%{stop, {wait_error, Reason}}
+    end;
+handshake(internal, client, State0 = #state{transport=Transport, raw_socket=RawSocket}) ->
+    io:format("Echo client handshake socket ~p~n", [RawSocket]),
+    %% Open a UDP socket with ephemeral port
+    %%{ok, RawUdp} = gen_udp:open(0, [{active, false}, {reuseaddr, true}]).、
+  
+    Opts = [
+          {fd,            RawSocket},
+          {protocol,      dtls},
+          {certfile,      "client.pem"},
+          {keyfile,       "client_key.pem"},
+          {cacertfile,    "ca.pem"},
+          {verify,        verify_peer}
+        ],
+    %% Upgrade the raw socket to a DTLS session
+    case ssl:handshake(Socket, 5000) of
+      ok ->
+        io:format("Echo client handshake ok socket~n"),
+        {next_state, handshake, State0, [{next_event, internal, client}]};
+      {error, Reason} ->
+        io:format("Echo client handshake fail reason ~p~n", [Reason]),
+        %%Transport:fast_close(RawSocket),
+        {stop, {handshake_failed, Reason}, State0}
     end.
+
 
 socket_handoff(info, {'EXIT', From, Reason}, State) ->
     %% transport or socket died unexpectedly
