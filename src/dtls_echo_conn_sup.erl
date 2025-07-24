@@ -3,7 +3,7 @@
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
--export([start_link/3, init/1, start_child/3]).
+-export([start_link/3, init/1, start_child/3, start_child_connect/4]).
 
 start_link(Port, ConnectFun, Options) ->
     io:format("linkk ~p~n", [Port]),
@@ -34,3 +34,9 @@ start_child(Transport, Socket, Port) ->
     io:format("Starting new session socket ~p~n", [Socket]),
     %%{_, {_, Port}} = Transport:sockname(Socket),
     supervisor:start_child(spec_name(Port), [Transport, Socket]).
+
+%% Called by user API to connect to a server
+start_child_connect(HostPort, IP, RemotePort, ChannelCount) ->
+    io:format("Starting new client session socket ~p~n", [Socket]),
+    %%{_, {_, Port}} = Transport:sockname(Socket),
+    supervisor:start_child(spec_name(HostPort), [IP, RemotePort, ChannelCount]).
