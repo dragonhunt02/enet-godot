@@ -73,7 +73,7 @@ send_outgoing_commands(Host, Commands, IP, Port) ->
     send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
 
 send_outgoing_commands(Host, Commands, IP, Port, PeerID) ->
-    gen_server:call(
+    gen_statem:call(
         Host, {send_outgoing_commands, Commands, IP, Port, PeerID}
     ).
 
@@ -97,7 +97,9 @@ get_channel_limit(Host) ->
 %%%===================================================================
 
 init({AssignedPort, ConnectFun, Options}) ->
-    true = gproc:reg({n, g, {enet_host, AssignedPort}}),
+    true = gproc:reg({n, l, {enet_host, AssignedPort}}),
+    yes = global:register_name({enet_host, AssignedPort}, self()),
+    %%io:format("Global proc reg ~p~n", Options),
     ChannelLimit =
         case lists:keyfind(channel_limit, 1, Options) of
             {channel_limit, CLimit} -> CLimit;
