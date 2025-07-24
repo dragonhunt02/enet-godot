@@ -97,7 +97,7 @@ get_channel_limit(Host) ->
 %%%===================================================================
 
 init({AssignedPort, ConnectFun, Options}) ->
-    true = gproc:reg({n, l, {enet_host, AssignedPort}}),
+    true = gproc:reg({n, g, {enet_host, AssignedPort}}),
     ChannelLimit =
         case lists:keyfind(channel_limit, 1, Options) of
             {channel_limit, CLimit} -> CLimit;
