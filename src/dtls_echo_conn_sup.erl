@@ -3,7 +3,7 @@
 -module(dtls_echo_conn_sup).
 -behaviour(supervisor).
 
--export([start_link/3, init/3, start_child/3]).
+-export([start_link/3, init/1, start_child/3]).
 
 start_link(Port, ConnectFun, Options) ->
     io:format("linkk ~p~n", [Port]),
@@ -15,7 +15,7 @@ spec_name(Port) ->
     %%local, spec_name(Port)
     %%list_to_atom(atom_to_list(?MODULE) ++ "_" ++ integer_to_list(Port)).
 
-init(Port, ConnectFun, Options) ->
+init({Port, ConnectFun, Options}) ->
     %% Each connection is a dtls_echo_server child
     ConnChild = {
       dtls_conn,
