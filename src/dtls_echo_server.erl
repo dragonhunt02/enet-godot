@@ -249,6 +249,7 @@ demux_packet(IP, Port, Packet, S) ->
             1 -> decompress(Rest, CompressionMode)
         end,
     LocalPort = get_port(self()),
+    ManagerName = get_name(self()),
     case RecipientPeerID of
         ?NULL_PEER_ID ->
             %% No particular peer is the receiver of this packet.
@@ -262,6 +263,7 @@ demux_packet(IP, Port, Packet, S) ->
                         ip = IP,
                         port = Port,
                         name = Ref,
+                        manager_name = ManagerName,
                         host = self(),
                         connect_fun = ConnectFun
                     },
