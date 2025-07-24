@@ -127,7 +127,77 @@ connected(info, {ssl_error, _Raw, Reason}, State = #state{peername=P}) ->
     {stop, Reason, State};
 
 connected(info, _Other, State) ->
-    {keep_state, State}.
+    {keep_state, State};
+                                 
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
+
+connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
+    %%
+    %% Connect to a remote peer.
+    %%
+    %% - Add a peer to the pool
+    %% - Start the peer process
+    %%
+    #state{
+        socket = Socket,
+        connect_fun = ConnectFun
+    } = S,
+    Ref = make_ref(),
+    LocalPort = get_port(self()),
+    Reply =
+        try enet_pool:add_peer(LocalPort, Ref) of
+            PeerID ->
+                Peer = #enet_peer{
+                    handshake_flow = local,
+                    peer_id = PeerID,
+                    ip = IP,
+                    port = Port,
+                    name = Ref,
+                    host = self(),
+                    channels = Channels,
+                    connect_fun = ConnectFun,
+                    connect_packet_data = Data
+                },
+                start_peer(Peer)
+        catch
+            error:pool_full -> {error, reached_peer_limit};
+            error:exists -> {error, exists}
+        end,
+  
+    {keep_state, S, [{reply, From, Reply}]};
+
+connected({call, From}, {send_outgoing_commands, C, PeerID}, S) ->
+    %%
+    %% Received outgoing commands from a peer.
+    %%
+    %% - Compress commands if compressor available
+    %% - Wrap the commands in a protocol header
+    %% - Send the packet
+    %% - Return sent time
+    %%
+    #state{
+        compressor = CompressionMode,
+        transport = Transport,
+        socket = Socket
+    } = S,
+    {Compressed, Commands} = 
+        case CompressionMode of
+            none -> 
+                {0, C}; % uncompressed
+            Compressor ->
+                {1, compress(C, Compressor)}
+        end,
+    SentTime = get_time(),
+    PH = #protocol_header{
+        compressed = Compressed,
+        peer_id = PeerID,
+        sent_time = SentTime
+    },
+    Packet = [enet_protocol_encode:protocol_header(PH), Commands],
+    ok = Transport:send(Socket, Packet),
+    {keep_state, S, [{reply, From, {sent_time, SentTime}}]}.
 
 %% Terminate
 terminate(_Reason, handshake, #state{transport = T, raw_socket = RawSocket, socket = undefined}) ->
