@@ -59,7 +59,7 @@ start_dtls_host(Port, ConnectFun, Options) ->
     %%{ok, AssignedPort} = inet:port(Socket),
     case enet_sup:start_host_dtls_supervisor(Port, ConnectFun, Options) of
         {error, Reason} ->
-            io:format("Startup dtls failure"),
+            io:format("Startup dtls failure ~p~n", [Reason]),
             {error, Reason};
         {ok, _HostSup} ->        
             io:format("Startup dtls success"),
