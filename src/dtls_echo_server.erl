@@ -33,6 +33,18 @@
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
 
+
+
+%%Api
+
+send_outgoing_commands(Host, Commands, IP, Port) ->
+    send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
+
+send_outgoing_commands(Host, Commands, IP, Port, PeerID) ->
+    gen_server:call(
+        Host, {send_outgoing_commands, Commands, IP, Port, PeerID}
+    ).
+
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
 start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
     gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, Transport, RawSocket}, []).
@@ -250,6 +262,7 @@ demux_packet(IP, Port, Packet, S) ->
         end,
     LocalPort = get_port(self()),
     ManagerName = get_name(self()),
+    HostPid = get_host_pid(self()),
     case RecipientPeerID of
         ?NULL_PEER_ID ->
             %% No particular peer is the receiver of this packet.
@@ -264,7 +277,8 @@ demux_packet(IP, Port, Packet, S) ->
                         port = Port,
                         name = Ref,
                         manager_name = ManagerName,
-                        host = self(),
+                        manager_pid = self(),
+                        host = HostPid,
                         connect_fun = ConnectFun
                     },
                     gproc:reg({p, l, peer_id}, PeerID),
@@ -301,6 +315,13 @@ get_peer_name(Peer) ->
 
 get_peer_id(Peer) ->
     gproc:get_value({p, l, peer_id}, Peer).
+
+get_port(Pid) ->
+    gproc:get_value({p, l, port}, Pid).
+
+get_host_pid(CurrentPid) ->
+    AssignedPort = get_port(CurrentPid),
+    gproc:where({n, g, {enet_host, AssignedPort}}).
 
 get_time() ->
     erlang:system_time(1000) band 16#FFFF.
