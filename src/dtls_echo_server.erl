@@ -109,7 +109,7 @@ init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount, Data}) ->
     {ok, RawSocket} = gen_udp:open(0, [{active, true}, {reuseaddr, false}]),
 
     %% Store raw args and defer the actual wait() to handle_continue
-    State0 = #state{transport = Transport,
+    State0 = #state{transport = undefined,
                     raw_socket = RawSocket,
                     connect_fun = ConnectFun,
                     compressor = Compressor,
