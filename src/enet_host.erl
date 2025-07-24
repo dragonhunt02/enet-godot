@@ -151,7 +151,7 @@ handle_call({connect, IP, Port, Channels, Data}, _From, S) ->
     Ref = make_ref(),
     LocalPort = get_port(self()),
     Reply =
-        try enet_pool:add_peer(LocalPort, Socket, Ref) of
+        try enet_pool:add_peer(LocalPort, Ref) of
             PeerID ->
                 Peer = #enet_peer{
                     handshake_flow = local,
@@ -258,7 +258,7 @@ handle_info({gproc, unreg, _Ref, {n, l, {enet_peer, Ref}}}, S) ->
         socket = Socket
     } = S,
     LocalPort = get_port(self()),
-    true = enet_pool:remove_peer(LocalPort, Socket, Ref),
+    true = enet_pool:remove_peer(LocalPort, Ref),
     {noreply, S}.
 
 %%%
@@ -312,7 +312,7 @@ demux_packet(Socket, IP, Port, Packet, S) ->
             %% No particular peer is the receiver of this packet.
             %% Create a new peer.
             Ref = make_ref(),
-            try enet_pool:add_peer(LocalPort, Socket, Ref) of
+            try enet_pool:add_peer(LocalPort, Ref) of
                 PeerID ->
                     Peer = #enet_peer{
                         handshake_flow = remote,
@@ -330,7 +330,7 @@ demux_packet(Socket, IP, Port, Packet, S) ->
                 error:exists -> {error, exists}
             end;
         PeerID ->
-            case enet_pool:pick_peer(LocalPort, Socket, PeerID) of
+            case enet_pool:pick_peer(LocalPort, PeerID) of
                 %% Unknown peer - drop the packet
                 %% In SSL, will drop packet if socket and packet peerid
                 %% don't match
