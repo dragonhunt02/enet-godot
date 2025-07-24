@@ -2,7 +2,7 @@
 -module(dtls_echo_server).
 -behaviour(gen_statem).
 
--export([start_link/2]).
+-export([start_link/5]).
 %%-export([handle_info/2]).
 %%-export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
 %% handle_continue/2, 
@@ -28,21 +28,21 @@
 }).
 
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
-start_link(Transport, RawSocket) ->
-    gen_statem:start_link(?MODULE, {Transport, RawSocket}, []).
+start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
+    gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, Transport, RawSocket}, []).
 
 %%--------------------------------------------------------------------
 %% Callback Mode
 %%--------------------------------------------------------------------
 callback_mode() -> state_functions.
 
-init({Transport, RawSocket}) ->
+init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
     process_flag(trap_exit, true),
     io:format("Init echo server socket ~p~n", [RawSocket]),
     Ref = make_ref(),
     gproc:reg({n, l, {enet_demux_peer, Ref}}),
     gproc:reg({p, l, name}, Ref),
-    %%gproc:reg({p, l, port}, LocalPort),
+    gproc:reg({p, l, port}, AssignedPort),
     %%gproc:reg({p, l, peer_id}, PeerID),
 
     %% Store raw args and defer the actual wait() to handle_continue
