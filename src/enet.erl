@@ -85,8 +85,8 @@ stop_host(HostPort) ->
 
 connect_peer(HostPort, IP, RemotePort, ChannelCount, Data) ->
     %%Host = gproc:where({n, l, {enet_host, HostPort}}),
-    {ok, Host} = dtls_echo_conn_sup:start_child(HostPort, IP, RemotePort, ChannelCount).
-    enet_host:connect(Host, IP, RemotePort, ChannelCount, Data).
+    {ok, Host} = dtls_echo_conn_sup:start_child(HostPort, IP, RemotePort, ChannelCount, Data).
+    %enet_host:connect(Host, IP, RemotePort, ChannelCount, Data).
 
 -spec connect_peer(
           HostPort     :: port_number(),
