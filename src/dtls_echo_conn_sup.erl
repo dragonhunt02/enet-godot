@@ -5,9 +5,9 @@
 
 -export([start_link/3, init/1, start_child/3]).
 
-start_link(Port, _ConnectFun, _Options) ->
+start_link(Port, ConnectFun, Options) ->
     io:format("linkk ~p~n", [Port]),
-    supervisor:start_link(spec_name(Port), ?MODULE, []).
+    supervisor:start_link(spec_name(Port), ?MODULE, [Port, ConnectFun, Options]).
 
 spec_name(Port) ->
     {via, gproc, {n, l, {?MODULE, Port}}}.
@@ -15,11 +15,11 @@ spec_name(Port) ->
     %%local, spec_name(Port)
     %%list_to_atom(atom_to_list(?MODULE) ++ "_" ++ integer_to_list(Port)).
 
-init([]) ->
+init(Port, ConnectFun, Options) ->
     %% Each connection is a dtls_echo_server child
     ConnChild = {
       dtls_conn,
-      {dtls_echo_server, start_link, []},
+      {dtls_echo_server, start_link, [Port, ConnectFun, Options]},
       transient,
       5000,
       worker,
