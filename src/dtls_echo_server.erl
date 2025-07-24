@@ -6,7 +6,7 @@
 -include("enet_commands.hrl").
 -include("enet_protocol.hrl").
 
--export([start_link/5]).
+-export([start_link/5], [start_link/7]).
 %%-export([handle_info/2]).
 %%-export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
 %% handle_continue/2, 
@@ -33,7 +33,9 @@
   connect_fun,
   compressor,
   remote_ip = undefined,
-  remote_port = undefined
+  remote_ip = undefined,
+  channels = undefined,
+  connect_packet_data = undefined
 }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
@@ -58,8 +60,8 @@ start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
     gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, Transport, RawSocket}, []).
 
 %%% Called via dtls_echo_conn_sup:start_child_connect(HostPort, IP, RemotePort, ChannelCount)
-start_link(AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount) ->
-    gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount}, []).
+start_link(AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount, Data) ->
+    gen_statem:start_link(?MODULE, {AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount, Data}, []).
 
 %%--------------------------------------------------------------------
 %% Callback Mode
@@ -90,7 +92,7 @@ init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
     %%gen_server:cast(self(), {handshake}),
     %%{ok, State0}. %%, {continue, handshake}}.
 
-init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount}) ->
+init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount, Data}) ->
     process_flag(trap_exit, true),
     io:format("Init echo client socket ~p~n", [RawSocket]),
     Ref = make_ref(),
@@ -112,13 +114,15 @@ init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount}) ->
                     connect_fun = ConnectFun,
                     compressor = Compressor,
                     remote_ip = IP,
-                    remote_port = RemotePort
+                    remote_port = RemotePort,
+                    channels = ChannelCount,
+                    connect_packet_data = Data
                    },
     {ok, client_connect, State0, [{next_event, internal, exec}]}.
     %%gen_server:cast(self(), {handshake}),
     %%{ok, State0}. %%, {continue, handshake}}.
 
-client_connect(internal, exec, State0 = #state{transport=Transport, raw_socket=RawSocket, remote_ip = RemoteIP, remote_port = RemotePort}) ->
+client_connect(internal, exec, State0 = #state{raw_socket=RawSocket, remote_ip = RemoteIP, remote_port = RemotePort}) ->
     io:format("Echo client handshake socket ~p~n", [RawSocket]),
     %% Open a UDP socket with ephemeral port
     %%{ok, RawUdp} = gen_udp:open(0, [{active, false}, {reuseaddr, true}]).
@@ -165,24 +169,14 @@ handshake(internal, exec, State0 = #state{transport=Transport, raw_socket=RawSoc
         {stop, {handshake_failed, Reason}, State0}
         %%{stop, {wait_error, Reason}}
     end;
-handshake(internal, client, State0 = #state{transport=Transport, raw_socket=RawSocket}) ->
-    io:format("Echo client handshake socket ~p~n", [RawSocket]),
-    %% Open a UDP socket with ephemeral port
+handshake(internal, client, State0 = #state{raw_socket=RawSocket, socket=Socket}) ->
+    io:format("Echo client handshake socket ~p~n", [Socket]),
     %%{ok, RawUdp} = gen_udp:open(0, [{active, false}, {reuseaddr, true}]).、
-  
-    Opts = [
-          {fd,            RawSocket},
-          {protocol,      dtls},
-          {certfile,      "client.pem"},
-          {keyfile,       "client_key.pem"},
-          {cacertfile,    "ca.pem"},
-          {verify,        verify_peer}
-        ],
-    %% Upgrade the raw socket to a DTLS session
+    %% Do DTLS session handshake
     case ssl:handshake(Socket, 5000) of
       ok ->
         io:format("Echo client handshake ok socket~n"),
-        {next_state, handshake, State0, [{next_event, internal, client}]};
+        {next_state, connected, State0, [{next_event, internal, client_add_peer}]};
       {error, Reason} ->
         io:format("Echo client handshake fail reason ~p~n", [Reason]),
         %%Transport:fast_close(RawSocket),
@@ -238,11 +232,8 @@ connected(info, {ssl_error, _Raw, Reason}, State = #state{peername=P}) ->
 connected(info, _Other, State) ->
     {keep_state, State};
                                  
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
 
-connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
+connected(internal, client_add_peer, S) ->
     %%
     %% Connect to a remote peer.
     %%
@@ -251,10 +242,16 @@ connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
     %%
     #state{
         socket = Socket,
-        connect_fun = ConnectFun
+        connect_fun = ConnectFun,
+        remote_ip=IP, 
+        remote_port=Port,
+        channels=Channels,
+        connect_packet_data = Data
     } = S,
     Ref = make_ref(),
     LocalPort = get_port(self()),
+    ManagerName = get_name(self()),
+    HostPid = get_host_pid(self()),
     Reply =
         try enet_pool:add_peer(LocalPort, Ref) of
             PeerID ->
@@ -264,18 +261,26 @@ connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
                     ip = IP,
                     port = Port,
                     name = Ref,
-                    host = self(),
+                    manager_name = ManagerName,
+                    manager_pid = self(),
+                    host = HostPid,
                     channels = Channels,
                     connect_fun = ConnectFun,
                     connect_packet_data = Data
                 },
+                gproc:reg({p, l, peer_id}, PeerID),
+                gproc:reg({p, l, peer_name}, Ref),
                 start_peer(Peer)
         catch
             error:pool_full -> {error, reached_peer_limit};
             error:exists -> {error, exists}
         end,
-  
-    {keep_state, S, [{reply, From, Reply}]};
+    %% TODO: Terminate on failure of start_peer
+    {keep_state, S};
+
+%%%===================================================================
+%%% gen_server callbacks
+%%%===================================================================
 
 connected({call, From}, {send_outgoing_commands, C, IP, Port, PeerID}, S) ->
     %%
