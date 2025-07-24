@@ -6,6 +6,7 @@
          port,
          name,
          manager_name,
+         manager_pid = ManagerPid,
          host,
          channels,
          connect_fun,
