@@ -28,22 +28,27 @@
   raw_socket,
   is_socket_owned = true,
   socket = undefined,
-  peername = undefined
+  peername = undefined,
+  connect_fun,
+  compressor
 }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
 
-
+-export([
+  send_outgoing_commands/4,
+  send_outgoing_commands/5
+]).
 
 %%Api
 
-send_outgoing_commands(Host, Commands, IP, Port) ->
-    send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
+%%send_outgoing_commands(Host, Commands, IP, Port) ->
+%%    send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
 
-send_outgoing_commands(Host, Commands, IP, Port, PeerID) ->
-    gen_server:call(
-        Host, {send_outgoing_commands, Commands, IP, Port, PeerID}
-    ).
+%%send_outgoing_commands(Host, Commands, IP, Port, PeerID) ->
+%%    gen_statem:call(
+%%        Host, {send_outgoing_commands, Commands, IP, Port, PeerID}
+%%    ).
 
 %%% Called via dtls_echo_conn_sup:start_child(Transport, Socket)
 start_link(AssignedPort, ConnectFun, Options, Transport, RawSocket) ->
@@ -63,9 +68,17 @@ init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
     gproc:reg({p, l, port}, AssignedPort),
     %%gproc:reg({p, l, peer_id}, PeerID),
 
+        Compressor = 
+        case lists:keyfind(compression_mode, 1, Options) of
+            {compression_mode, CompressionMode} -> CompressionMode;
+            false -> none
+        end,
+
     %% Store raw args and defer the actual wait() to handle_continue
     State0 = #state{transport = Transport,
-                    raw_socket = RawSocket},
+                    raw_socket = RawSocket,
+                    connect_fun = ConnectFun,
+                    compressor = Compressor},
     {ok, handshake, State0, [{next_event, internal, exec}]}.
     %%gen_server:cast(self(), {handshake}),
     %%{ok, State0}. %%, {continue, handshake}}.
@@ -180,7 +193,7 @@ connected({call, From}, {connect, IP, Port, Channels, Data}, S) ->
   
     {keep_state, S, [{reply, From, Reply}]};
 
-connected({call, From}, {send_outgoing_commands, C, PeerID}, S) ->
+connected({call, From}, {send_outgoing_commands, C, IP, Port, PeerID}, S) ->
     %%
     %% Received outgoing commands from a peer.
     %%
@@ -284,6 +297,7 @@ demux_packet(IP, Port, Packet, S) ->
                     gproc:reg({p, l, peer_id}, PeerID),
                     gproc:reg({p, l, peer_name}, Ref),
                     {ok, Pid} = start_peer(Peer),
+                    %%io:format("Peer start recv packet ~p ~p ~p ~p~n", [Pid, IP, SentTime, Commands]),
                     enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
             catch
                 error:pool_full -> {error, reached_peer_limit};
@@ -321,7 +335,8 @@ get_port(Pid) ->
 
 get_host_pid(CurrentPid) ->
     AssignedPort = get_port(CurrentPid),
-    gproc:where({n, g, {enet_host, AssignedPort}}).
+    %%gproc:where({n, g, {enet_host, AssignedPort}}).
+    global:whereis_name({enet_host, AssignedPort}).
 
 get_time() ->
     erlang:system_time(1000) band 16#FFFF.
