@@ -67,7 +67,7 @@ give_socket(Host, Socket, Transport) ->
     %%gen_server:cast(Host, {give_socket, Socket, Transport}).
 
 connect(Host, IP, Port, ChannelCount, Data) ->
-    gen_server:call(Host, {connect, IP, Port, ChannelCount, Data}).
+    gen_statem:call(Host, {connect, IP, Port, ChannelCount, Data}).
 
 send_outgoing_commands(Host, Commands, IP, Port) ->
     send_outgoing_commands(Host, Commands, IP, Port, ?NULL_PEER_ID).
