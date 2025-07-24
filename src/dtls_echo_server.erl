@@ -39,6 +39,11 @@ callback_mode() -> state_functions.
 init({Transport, RawSocket}) ->
     process_flag(trap_exit, true),
     io:format("Init echo server socket ~p~n", [RawSocket]),
+    Ref = make_ref(),
+    gproc:reg({n, l, {enet_demux_peer, Ref}}),
+    gproc:reg({p, l, name}, Ref),
+    %%gproc:reg({p, l, port}, LocalPort),
+    %%gproc:reg({p, l, peer_id}, PeerID),
 
     %% Store raw args and defer the actual wait() to handle_continue
     State0 = #state{transport = Transport,
@@ -61,8 +66,8 @@ handshake(internal, exec, State0 = #state{transport=Transport, raw_socket=RawSoc
         io:format("Echo server trandport ok socket ~p~n", [Socket]),
         {ok, PeerName} = Transport:peername(Socket),
         State = State0#state{socket=Socket, peername=PeerName},
-        {next_state, socket_handoff, State, [{next_event, internal, exec}]};
-        %%{next_state, connected, State};
+        %%{next_state, socket_handoff, State, [{next_event, internal, exec}]};
+        {next_state, connected, State};
       {error, Reason} ->
         io:format("Echo server transport fail reason ~p~n", [Reason]),
         %%Transport:fast_close(RawSocket),
@@ -93,9 +98,11 @@ socket_handoff(internal, _Any, State0 = #state{transport=Transport, socket=Socke
  
 
 %%% Handle all DTLS/SSL messages
-connected(info, {ssl, _Raw, Packet}, State = #state{transport=T, socket=S, peername=P}) ->
+connected(info, {ssl, _Raw, Packet}, State = #state{transport=T, socket=Socket, peername=P}) ->
     io:format("~s ← ~p~n", [esockd:format(P), Packet]),
-    T:async_send(S, Packet),
+    %%T:async_send(Socket, Packet),
+    {PeerIP, PeerPort} = P,
+    demux_packet(PeerIP, PeerPort, Packet, State),
     {keep_state, State};
 
 connected(info, {ssl_passive, _Raw}, State = #state{transport=T, socket=S, peername=P}) ->
@@ -135,3 +142,104 @@ terminate(Reason, _StateName, State) ->
 
 code_change(_Old, _StateName, State, _Extra) ->
     {ok, State}.
+
+
+
+%% Internal 
+demux_packet(IP, Port, Packet, S) ->
+    %%
+    %% Received a UDP packet.
+    %%
+    %% - Unpack the ENet protocol header
+    %% - Decompress the remaining packet if necessary
+    %% - Send the packet to the peer (ID in protocol header)
+    %%
+    #state{
+        socket = Socket,
+        compressor = CompressionMode,
+        connect_fun = ConnectFun
+    } = S,
+    %% TODO: Replace call to enet_protocol_decode with binary pattern match.
+    {ok,
+        #protocol_header{
+            compressed = IsCompressed,
+            peer_id = RecipientPeerID,
+            sent_time = SentTime
+        },
+        Rest} = enet_protocol_decode:protocol_header(Packet),
+    Commands =
+        case IsCompressed of
+            0 -> Rest;
+            1 -> decompress(Rest, CompressionMode)
+        end,
+    LocalPort = get_port(self()),
+    case RecipientPeerID of
+        ?NULL_PEER_ID ->
+            %% No particular peer is the receiver of this packet.
+            %% Create a new peer.
+            Ref = make_ref(),
+            try enet_pool:add_peer(LocalPort, Ref) of
+                PeerID ->
+                    Peer = #enet_peer{
+                        handshake_flow = remote,
+                        peer_id = PeerID,
+                        ip = IP,
+                        port = Port,
+                        name = Ref,
+                        host = self(),
+                        connect_fun = ConnectFun
+                    },
+                    gproc:reg({p, l, peer_id}, PeerID),
+                    gproc:reg({p, l, peer_name}, Ref),
+                    {ok, Pid} = start_peer(Peer),
+                    enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
+            catch
+                error:pool_full -> {error, reached_peer_limit};
+                error:exists -> {error, exists}
+            end;
+        PeerID ->
+            CurrentPeerID = get_peer_id(self()),
+            case PeerID =:= CurrentPeerID  of
+                true -> 
+                    case enet_pool:pick_peer(LocalPort, CurrentPeerID) of
+                        false ->
+                            ok; %% Peer process failed?
+                        Pid ->
+                            enet_peer:recv_incoming_packet(Pid, IP, SentTime, Commands)
+                    end;
+                _ -> ok %% Drop invalid/malicious packet attempt
+            end
+    end.
+
+%%get_next_peer_id() ->
+    %% TODO: Replace with random unique 12bit uint excluding 16#FFF 
+%%    make_ref().
+
+get_peer_name(Peer) ->
+    gproc:get_value({p, l, name}, Peer).
+
+get_peer_id(Peer) ->
+    gproc:get_value({p, l, peer_id}, Peer).
+
+get_time() ->
+    erlang:system_time(1000) band 16#FFFF.
+
+start_peer(Peer = #enet_peer{name = Ref}) ->
+    LocalPort = gproc:get_value({p, l, port}, self()),
+    PeerSup = gproc:where({n, l, {enet_peer_sup, LocalPort}}),
+    {ok, Pid} = enet_peer_sup:start_peer(PeerSup, Peer),
+    _Ref = gproc:monitor({n, l, {enet_peer, Ref}}),
+    {ok, Pid}.
+
+decompress(Data, zlib) -> 
+    zlib:uncompress(Data);
+decompress(_Data, Mode) ->
+    unsupported_compress_mode(Mode).
+
+compress(Data, zlib) ->
+    zlib:compress(Data);
+compress(_Data, Mode) ->
+    unsupported_compress_mode(Mode).
+
+unsupported_compress_mode(Mode) -> 
+    logger:error("Unsupported compression mode: ~p", [Mode]).
