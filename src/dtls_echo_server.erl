@@ -6,7 +6,7 @@
 -include("enet_commands.hrl").
 -include("enet_protocol.hrl").
 
--export([start_link/5], [start_link/7]).
+-export([start_link/5, start_link/7]).
 %%-export([handle_info/2]).
 %%-export([init/1, handle_info/2, handle_cast/2, handle_call/3, terminate/2, code_change/3]).
 %% handle_continue/2, 
@@ -33,17 +33,17 @@
   connect_fun,
   compressor,
   remote_ip = undefined,
-  remote_ip = undefined,
+  remote_port = undefined,
   channels = undefined,
   connect_packet_data = undefined
 }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
 
--export([
-  send_outgoing_commands/4,
-  send_outgoing_commands/5
-]).
+%%-export([
+%%  send_outgoing_commands/4,
+%%  send_outgoing_commands/5
+%%]).
 
 %%Api
 
@@ -88,13 +88,13 @@ init({AssignedPort, ConnectFun, Options, Transport, RawSocket}) ->
                     raw_socket = RawSocket,
                     connect_fun = ConnectFun,
                     compressor = Compressor},
-    {ok, handshake, State0, [{next_event, internal, exec}]}.
+    {ok, handshake, State0, [{next_event, internal, exec}]};
     %%gen_server:cast(self(), {handshake}),
-    %%{ok, State0}. %%, {continue, handshake}}.
+    %%{ok, State0}. %%, {continue, handshake}};
 
 init({AssignedPort, ConnectFun, Options, IP, RemotePort, ChannelCount, Data}) ->
     process_flag(trap_exit, true),
-    io:format("Init echo client socket ~p~n", [RawSocket]),
+    io:format("Init echo client socket ~p:~p~n", [IP, RemotePort]),
     Ref = make_ref(),
     gproc:reg({n, l, {enet_demux_peer, Ref}}),
     gproc:reg({p, l, name}, Ref),
@@ -174,8 +174,10 @@ handshake(internal, client, State0 = #state{raw_socket=RawSocket, socket=Socket}
     %%{ok, RawUdp} = gen_udp:open(0, [{active, false}, {reuseaddr, true}]).、
     %% Do DTLS session handshake
     case ssl:handshake(Socket, 5000) of
-      ok ->
+      {ok, AcceptedSocket} ->
         io:format("Echo client handshake ok socket~n"),
+        {ok, PeerName} = ssl:peername(AcceptedSocket),
+        State = State0#state{socket=AcceptedSocket, peername=PeerName},
         {next_state, connected, State0, [{next_event, internal, client_add_peer}]};
       {error, Reason} ->
         io:format("Echo client handshake fail reason ~p~n", [Reason]),
